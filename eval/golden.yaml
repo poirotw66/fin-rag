@@ -34,6 +34,20 @@
     - [sit-fund-mgmt, 第 11 條]
   expect_refusal: false
 
+- id: B6
+  track: B
+  question: 依證券投資信託及顧問法，證券投資信託契約應記載哪些事項？
+  expected_refs:
+    - [sit-trust-act, 第 12 條]
+  expect_refusal: false
+
+- id: B7
+  track: B
+  question: 投信事業對受益人負何種信託責任？
+  expected_refs:
+    - [sit-trust-act, 第 7 條]
+  expect_refusal: false
+
 - id: A1
   track: A
   question: 什麼是風險基礎方法？
@@ -67,6 +81,20 @@
   question: 銀行 AML 內部控制誰負責？
   expected_refs:
     - [aml-bank-ic, 第 5 條]
+  expect_refusal: false
+
+- id: A6
+  track: A
+  question: 洗錢防制法所稱洗錢行為包括哪些類型？
+  expected_refs:
+    - [aml-act, 第 2 條]
+  expect_refusal: false
+
+- id: A7
+  track: A
+  question: 洗錢防制法由哪個機關辦理防制洗錢業務？
+  expected_refs:
+    - [aml-act, 第 27 條]
   expect_refusal: false
 
 - id: C1
