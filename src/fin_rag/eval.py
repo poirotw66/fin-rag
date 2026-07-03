@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from .agent import FinRagAgent
 
@@ -19,7 +20,7 @@ class GoldenCase:
 
 
 def load_golden(path: str | Path) -> list[GoldenCase]:
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     return [
         GoldenCase(
             id=item["id"],
@@ -72,4 +73,3 @@ def _rate(values) -> float:
     if not items:
         return 0.0
     return round(sum(1 for item in items if item) / len(items), 4)
-

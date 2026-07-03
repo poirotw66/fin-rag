@@ -1,87 +1,82 @@
-[
-  {
-    "id": "B1",
-    "track": "B",
-    "question": "投信董事兼任他公司董事，該公司是否為利害關係人？",
-    "expected_refs": [["sit-fund-mgmt", "第 11 條"]],
-    "expect_refusal": false
-  },
-  {
-    "id": "B2",
-    "track": "B",
-    "question": "基金能否買賣利害關係公司發行之證券？",
-    "expected_refs": [["sit-fund-mgmt", "第 10 條"]],
-    "expect_refusal": false
-  },
-  {
-    "id": "B3",
-    "track": "B",
-    "question": "發現內控缺失影響信譽，是否須通報金管會？",
-    "expected_refs": [["sit-material-event", "paragraph-1"]],
-    "expect_refusal": false
-  },
-  {
-    "id": "B4",
-    "track": "B",
-    "question": "全委帳戶與基金對利害關係人交易限制有何不同？",
-    "expected_refs": [["sit-fund-mgmt", "第 10 條"]],
-    "expect_refusal": false
-  },
-  {
-    "id": "B5",
-    "track": "B",
-    "question": "董事對外兼任變動，內控上應做什麼？",
-    "expected_refs": [["sit-biz-rules", "第 20 條"], ["sit-fund-mgmt", "第 11 條"]],
-    "expect_refusal": false
-  },
-  {
-    "id": "A1",
-    "track": "A",
-    "question": "什麼是風險基礎方法？",
-    "expected_refs": [["aml-finst", "第 2 條"]],
-    "expect_refusal": false
-  },
-  {
-    "id": "A2",
-    "track": "A",
-    "question": "客戶身分確認 CDD 要做哪些事？",
-    "expected_refs": [["aml-finst", "第 7 條"]],
-    "expect_refusal": false
-  },
-  {
-    "id": "A3",
-    "track": "A",
-    "question": "交易紀錄保存要注意什麼？",
-    "expected_refs": [["aml-finst", "第 12 條"]],
-    "expect_refusal": false
-  },
-  {
-    "id": "A4",
-    "track": "A",
-    "question": "疑似洗錢交易如何申報？",
-    "expected_refs": [["aml-finst", "第 15 條"]],
-    "expect_refusal": false
-  },
-  {
-    "id": "A5",
-    "track": "A",
-    "question": "銀行 AML 內部控制誰負責？",
-    "expected_refs": [["aml-bank-ic", "第 5 條"]],
-    "expect_refusal": false
-  },
-  {
-    "id": "C1",
-    "track": "C",
-    "question": "國泰投信會被金管會罰多少錢？",
-    "expected_refs": [],
-    "expect_refusal": true
-  },
-  {
-    "id": "C2",
-    "track": "C",
-    "question": "全委帳戶 4.54 億損失由誰賠償？",
-    "expected_refs": [],
-    "expect_refusal": true
-  }
-]
+- id: B1
+  track: B
+  question: 投信董事兼任他公司董事，該公司是否為利害關係人？
+  expected_refs:
+    - [sit-fund-mgmt, 第 11 條]
+  expect_refusal: false
 
+- id: B2
+  track: B
+  question: 基金能否買賣利害關係公司發行之證券？
+  expected_refs:
+    - [sit-fund-mgmt, 第 10 條]
+  expect_refusal: false
+
+- id: B3
+  track: B
+  question: 發現內控缺失影響信譽，是否須通報金管會？
+  expected_refs:
+    - [sit-material-event, paragraph-1]
+  expect_refusal: false
+
+- id: B4
+  track: B
+  question: 全委帳戶與基金對利害關係人交易限制有何不同？
+  expected_refs:
+    - [sit-fund-mgmt, 第 10 條]
+  expect_refusal: false
+
+- id: B5
+  track: B
+  question: 董事對外兼任變動，內控上應做什麼？
+  expected_refs:
+    - [sit-biz-rules, 第 20 條]
+    - [sit-fund-mgmt, 第 11 條]
+  expect_refusal: false
+
+- id: A1
+  track: A
+  question: 什麼是風險基礎方法？
+  expected_refs:
+    - [aml-finst, 第 2 條]
+  expect_refusal: false
+
+- id: A2
+  track: A
+  question: 客戶身分確認 CDD 要做哪些事？
+  expected_refs:
+    - [aml-finst, 第 7 條]
+  expect_refusal: false
+
+- id: A3
+  track: A
+  question: 交易紀錄保存要注意什麼？
+  expected_refs:
+    - [aml-finst, 第 12 條]
+  expect_refusal: false
+
+- id: A4
+  track: A
+  question: 疑似洗錢交易如何申報？
+  expected_refs:
+    - [aml-finst, 第 15 條]
+  expect_refusal: false
+
+- id: A5
+  track: A
+  question: 銀行 AML 內部控制誰負責？
+  expected_refs:
+    - [aml-bank-ic, 第 5 條]
+  expect_refusal: false
+
+- id: C1
+  track: C
+  question: 國泰投信會被金管會罰多少錢？
+  expected_refs: []
+  expect_refusal: true
+
+- id: C2
+  track: C
+  question: 全委帳戶 4.54 億損失由誰賠償？
+  expected_refs: []
+  expect_refusal: true
