@@ -37,6 +37,8 @@ This is not legal advice.
 
 ```text
 src/fin_rag/         Core package
+apps/api/            FastAPI adapter
+apps/web/            React demo UI
 scripts/             CLI entry scripts
 corpus/              Manifest, raw sources, chunks, and index
 eval/                Golden set, runner, and last report
@@ -93,6 +95,22 @@ Run the full test suite:
 python run_tests.py
 ```
 
+## Demo App
+
+Backend:
+
+```bash
+uvicorn apps.api.app:app --reload
+```
+
+Frontend:
+
+```bash
+cd apps/web && npm run dev
+```
+
+Vite serves the UI on port 5173 and proxies `/api` to FastAPI on port 8000. Set `GEMINI_API_KEY` in `.env` before submitting questions.
+
 ## Corpus Scope
 
 Current MVP tracks:
@@ -103,7 +121,7 @@ Current MVP tracks:
 
 Media reports are intentionally excluded from retrieval and cannot be used as legal citations.
 
-See [corpus/README.md](C:/Users/00896102/Projects/fin-rag/corpus/README.md) for corpus-specific notes.
+See [corpus/README.md](corpus/README.md) for corpus-specific notes.
 
 ## Verification
 

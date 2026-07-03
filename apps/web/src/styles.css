@@ -1,0 +1,180 @@
+:root {
+  --bg: #f3efe5;
+  --surface: #fffdf8;
+  --ink: #1e2a25;
+  --accent: #0d5c46;
+  --accent-dark: #084333;
+  --muted: #6f7b74;
+  --border: #d8d0c2;
+  --error: #9b2c2c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: linear-gradient(180deg, #ebe4d6 0%, var(--bg) 24rem);
+  color: var(--ink);
+}
+
+.page {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+.hero,
+.answer-card,
+.citations-card,
+.retrieved-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: 0 12px 30px rgba(30, 42, 37, 0.06);
+}
+
+.hero {
+  padding: 1.75rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1,
+h2 {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  line-height: 1.1;
+}
+
+.subtitle,
+.muted,
+.meta {
+  color: var(--muted);
+}
+
+.subtitle {
+  margin: 0.75rem 0 1.5rem;
+  line-height: 1.6;
+}
+
+.ask-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ask-form label {
+  font-weight: 600;
+}
+
+.ask-form textarea,
+.ask-form button {
+  font: inherit;
+}
+
+.ask-form textarea {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  resize: vertical;
+  background: #fff;
+}
+
+.ask-form button {
+  justify-self: start;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.8rem 1.4rem;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ask-form button:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+.ask-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  margin: 1rem 0 0;
+  color: var(--error);
+}
+
+.answer-card,
+.citations-card,
+.retrieved-card {
+  margin-top: 1rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.answer-text,
+.chunk-text {
+  line-height: 1.7;
+}
+
+.answer-text {
+  margin: 0.75rem 0;
+  white-space: pre-wrap;
+}
+
+.meta {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.citations-card ul,
+.retrieved-card ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.citations-card li,
+.retrieved-card li {
+  margin-bottom: 0.75rem;
+}
+
+.retrieved-card summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.chunk-heading {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+}
+
+.chunk-text {
+  margin: 0;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding-top: 1.5rem;
+  }
+
+  .hero,
+  .answer-card,
+  .citations-card,
+  .retrieved-card {
+    border-radius: 0.85rem;
+  }
+}
