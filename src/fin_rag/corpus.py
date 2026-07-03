@@ -7,7 +7,10 @@ from pathlib import Path
 from .types import Chunk, ManifestEntry
 
 
-ARTICLE_RE = re.compile(r"(第\s*[一二三四五六七八九十百千\d]+\s*條(?:之\s*[一二三四五六七八九十百千\d]+)?)")
+ARTICLE_RE = re.compile(
+    r"^\s*(第\s*[一二三四五六七八九十百千\d]+(?:\s*-\s*\d+|\s*之\s*[一二三四五六七八九十百千\d]+)?\s*條)\s*$",
+    re.MULTILINE,
+)
 
 
 def load_manifest(path: str | Path) -> dict[str, ManifestEntry]:

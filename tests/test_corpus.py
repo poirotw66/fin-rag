@@ -51,6 +51,36 @@ class CorpusTests(unittest.TestCase):
         self.assertIn("不得投資", chunks[0].text)
         self.assertEqual(chunks[0].doc_id, "sit-fund-mgmt")
 
+    def test_chunk_text_by_article_splits_hyphenated_sub_articles(self):
+        text = "第 10 條\n主條文。\n第 10-1 條\n子條文。\n第 11 條\n下一條。"
+
+        chunks = chunk_text_by_article(
+            doc_id="sit-fund-mgmt",
+            title="證券投資信託基金管理辦法",
+            track="sit-related-party",
+            source_url="https://example.test/law",
+            revision_date="113-01-01",
+            text=text,
+        )
+
+        self.assertEqual([chunk.article for chunk in chunks], ["第 10 條", "第 10-1 條", "第 11 條"])
+        self.assertEqual(chunks[1].text, "子條文。")
+
+    def test_chunk_text_by_article_ignores_inline_article_references(self):
+        text = "第 10 條\n依第十一條規定辦理。\n第 11 條\n下一條內容。"
+
+        chunks = chunk_text_by_article(
+            doc_id="sit-fund-mgmt",
+            title="證券投資信託基金管理辦法",
+            track="sit-related-party",
+            source_url="https://example.test/law",
+            revision_date="113-01-01",
+            text=text,
+        )
+
+        self.assertEqual([chunk.article for chunk in chunks], ["第 10 條", "第 11 條"])
+        self.assertEqual(chunks[0].text, "依第十一條規定辦理。")
+
 
 if __name__ == "__main__":
     unittest.main()
