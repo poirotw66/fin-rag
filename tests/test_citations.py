@@ -1,0 +1,35 @@
+import unittest
+
+from fin_rag.citations import citation_hit, should_refuse_question
+from fin_rag.types import Chunk, RetrievedChunk
+
+
+class CitationTests(unittest.TestCase):
+    def test_citation_hit_requires_retrieved_doc_and_article(self):
+        retrieved = [
+            RetrievedChunk(
+                chunk=Chunk(
+                    doc_id="sit-fund-mgmt",
+                    title="證券投資信託基金管理辦法",
+                    article="第 10 條",
+                    text="基金不得投資利害關係公司證券。",
+                    track="sit-related-party",
+                    source_url="https://example.test",
+                    revision_date="113-01-01",
+                ),
+                score=0.9,
+            )
+        ]
+
+        self.assertTrue(citation_hit("不得投資（sit-fund-mgmt 第 10 條）。", retrieved))
+        self.assertTrue(citation_hit("不得投資（證券投資信託基金管理辦法第10條）。", retrieved))
+        self.assertFalse(citation_hit("不得投資（sit-fund-mgmt 第 11 條）。", retrieved))
+
+    def test_should_refuse_case_specific_penalty_questions(self):
+        self.assertTrue(should_refuse_question("國泰投信會被罰多少？"))
+        self.assertTrue(should_refuse_question("全委帳戶 4.54 億損失由誰賠？"))
+        self.assertFalse(should_refuse_question("CDD 要做哪些事？"))
+
+
+if __name__ == "__main__":
+    unittest.main()

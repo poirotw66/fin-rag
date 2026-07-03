@@ -1,0 +1,58 @@
+[
+  {
+    "doc_id": "sit-fund-mgmt",
+    "title": "證券投資信託基金管理辦法",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0400082",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "待查",
+    "fetched_at": "2026-06-25",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "sit-related-party"
+  },
+  {
+    "doc_id": "sit-biz-rules",
+    "title": "證券投資信託事業管理規則",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0400081",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "待查",
+    "fetched_at": "2026-06-25",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "sit-related-party"
+  },
+  {
+    "doc_id": "sit-material-event",
+    "title": "投信投顧重大偶發事件通報",
+    "source_url": "https://www.sfb.gov.tw/",
+    "issuer": "金融監督管理委員會證券期貨局",
+    "revision_date": "104-04-14",
+    "fetched_at": "2026-06-25",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "sit-reporting"
+  },
+  {
+    "doc_id": "aml-finst",
+    "title": "金融機構防制洗錢辦法",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0380252",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "待查",
+    "fetched_at": "2026-06-25",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "aml"
+  },
+  {
+    "doc_id": "aml-bank-ic",
+    "title": "銀行業及電子支付機構電子票證發行機構防制洗錢及打擊資恐內部控制與稽核制度實施辦法",
+    "source_url": "https://law.moj.gov.tw/",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "待查",
+    "fetched_at": "2026-06-25",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "aml"
+  }
+]
+
