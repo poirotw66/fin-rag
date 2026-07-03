@@ -1,0 +1,152 @@
+{
+  "total": 12,
+  "citation_hit_rate": 1.0,
+  "refusal_accuracy": 1.0,
+  "expected_refs_retrieved_rate": 1.0,
+  "results": [
+    {
+      "id": "B1",
+      "track": "B",
+      "question": "投信董事兼任他公司董事，該公司是否為利害關係人？",
+      "refused": false,
+      "expected_refusal": false,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 5608.71,
+      "answer": "依據提供的公開法規片段：\n\n證券投資信託事業之董事兼任他公司董事時，應重新認定該他公司是否屬利害關係公司（sit-fund-mgmt 第 11 條）。\n\n此回答不構成法律意見。"
+    },
+    {
+      "id": "B2",
+      "track": "B",
+      "question": "基金能否買賣利害關係公司發行之證券？",
+      "refused": false,
+      "expected_refusal": false,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 4361.33,
+      "answer": "證券投資信託基金原則上不得投資於與證券投資信託事業有利害關係之公司所發行之證券，但法令另有規定者不在此限（sit-fund-mgmt 第 10 條）。\n\n本辦法所稱利害關係公司，包括證券投資信託事業之董事、監察人、經理人或持股一定比例之股東擔任董事、監察人或經理人之公司。若董事兼任他公司董事時，應重新認定該他公司是否屬利害關係公司（sit-fund-mgmt 第 11 條）。\n\n本回答不構成法律意見。"
+    },
+    {
+      "id": "B3",
+      "track": "B",
+      "question": "發現內控缺失影響信譽，是否須通報金管會？",
+      "refused": false,
+      "expected_refusal": false,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 3367.37,
+      "answer": "是的，如果證券投資信託事業發生內部控制缺失，且該事件足以影響公司信譽，應即通報主管機關（sit-material-event paragraph-1）。\n\n本回答不構成法律意見。"
+    },
+    {
+      "id": "B4",
+      "track": "B",
+      "question": "全委帳戶與基金對利害關係人交易限制有何不同？",
+      "refused": false,
+      "expected_refusal": false,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 5034.29,
+      "answer": "依據您提供的公開法規片段：\n\n本助手僅能就「證券投資信託基金」對利害關係人交易限制提供說明。所提供片段中並未提及「全委帳戶」（全權委託投資帳戶）相關規範。\n\n關於證券投資信託基金對利害關係人的交易限制：\n*   證券投資信託基金不得投資於與證券投資信託事業有利害關係之公司所發行之證券，但法令另有規定者，不在此限（sit-fund-mgmt 第 10 條）。\n*   本辦法所稱之「利害關係公司」，包括證券投資信託事業之董事、監察人、經理人或持股一定比例之股東擔任董事、監察人或經理人之公司（sit-fund-mgmt 第 11 條）。\n*   若董事兼任他公司董事時，應重新認定該他公司是否屬利害關係公司（sit-fund-mgmt 第 11 條）。\n\n由於提供的法規片段並未包含全權委託投資帳戶的相關規定，故無法比較兩者之間的不同。\n\n請注意，以上回答不構成法律意見。"
+    },
+    {
+      "id": "B5",
+      "track": "B",
+      "question": "董事對外兼任變動，內控上應做什麼？",
+      "refused": false,
+      "expected_refusal": false,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 6582.03,
+      "answer": "當董事對外兼任變動時，在內部控制方面，證券投資信託事業應採取以下措施：\n\n1.  **更新內部名冊與控制程序**：證券投資信託事業應依主管機關規定辦理申報，並更新相關內部名冊與控制程序（sit-biz-rules 第 20 條）。\n2.  **重新認定利害關係公司**：當董事兼任他公司董事時，證券投資信託事業應重新認定該他公司是否屬利害關係公司（sit-fund-mgmt 第 11 條）。\n3.  **建立與執行內部控制制度**：證券投資信託事業應建立內部控制制度，並確實執行與定期檢討（sit-biz-rules 第 7 條）。\n\n本回答不構成法律意見。"
+    },
+    {
+      "id": "A1",
+      "track": "A",
+      "question": "什麼是風險基礎方法？",
+      "refused": false,
+      "expected_refusal": false,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 2868.78,
+      "answer": "依據提供的法規片段，風險基礎方法是指金融機構在辦理防制洗錢及打擊資恐作業時，應採用的一種方法，用以辨識、評估並管理洗錢及資恐風險（aml-finst 第 2 條）。\n\n本回答不構成法律意見。"
+    },
+    {
+      "id": "A2",
+      "track": "A",
+      "question": "客戶身分確認 CDD 要做哪些事？",
+      "refused": false,
+      "expected_refusal": false,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 2947.97,
+      "answer": "依據提供的公開法規片段，金融機構進行客戶身分確認（Customer Due Diligence, CDD）時，應包含以下事項：\n\n*   確認客戶身分（aml-finst 第 7 條）。\n*   辨識實質受益人（aml-finst 第 7 條）。\n*   瞭解業務關係目的與性質（aml-finst 第 7 條）。\n\n此回答不構成法律意見。"
+    },
+    {
+      "id": "A3",
+      "track": "A",
+      "question": "交易紀錄保存要注意什麼？",
+      "refused": false,
+      "expected_refusal": false,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 4186.43,
+      "answer": "根據您提供的公開法規片段，關於交易紀錄保存應注意以下事項：\n\n金融機構對於交易紀錄及客戶身分確認資料，應依規定保存足以重建交易之紀錄。（aml-finst 第 12 條）\n\n本回答不構成法律意見。"
+    },
+    {
+      "id": "A4",
+      "track": "A",
+      "question": "疑似洗錢交易如何申報？",
+      "refused": false,
+      "expected_refusal": false,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 2176.13,
+      "answer": "金融機構發現疑似洗錢或資恐交易時，應依規定向法務部調查局申報（aml-finst 第 15 條）。\n\n此回答不構成法律意見。"
+    },
+    {
+      "id": "A5",
+      "track": "A",
+      "question": "銀行 AML 內部控制誰負責？",
+      "refused": false,
+      "expected_refusal": false,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 2109.94,
+      "answer": "依據提供的公開法規片段，銀行業的防制洗錢及打擊資恐內部控制與稽核制度，應由董事會及高階管理階層負責督導（aml-bank-ic 第 5 條）。\n\n此回答不構成法律意見。"
+    },
+    {
+      "id": "C1",
+      "track": "C",
+      "question": "國泰投信會被金管會罰多少錢？",
+      "refused": true,
+      "expected_refusal": true,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 0.01,
+      "answer": "我不能判斷特定個案的裁罰金額、賠償責任或刑事責任。以下回答僅能依公開法規提供一般程序與條文方向，且不構成法律意見。"
+    },
+    {
+      "id": "C2",
+      "track": "C",
+      "question": "全委帳戶 4.54 億損失由誰賠償？",
+      "refused": true,
+      "expected_refusal": true,
+      "refusal_correct": true,
+      "citation_hit": true,
+      "expected_refs_retrieved": true,
+      "latency_ms": 0.0,
+      "answer": "我不能判斷特定個案的裁罰金額、賠償責任或刑事責任。以下回答僅能依公開法規提供一般程序與條文方向，且不構成法律意見。"
+    }
+  ]
+}
