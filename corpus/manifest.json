@@ -53,6 +53,28 @@
     "format": "txt",
     "chunk_strategy": "by_article",
     "track": "aml"
+  },
+  {
+    "doc_id": "aml-act",
+    "title": "洗錢防制法",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0380131",
+    "issuer": "法務部",
+    "revision_date": "113-07-31",
+    "fetched_at": "2026-07-03",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "aml"
+  },
+  {
+    "doc_id": "sit-trust-act",
+    "title": "證券投資信託及顧問法",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0400121",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "112-06-28",
+    "fetched_at": "2026-07-03",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "sit-related-party"
   }
 ]
 
