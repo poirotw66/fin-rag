@@ -1,0 +1,9 @@
+beautifulsoup4>=4.12
+fastapi>=0.115
+google-genai>=1.0
+httpx>=0.28
+langgraph>=0.2
+numpy>=1.26
+pyyaml>=6.0
+requests>=2.31
+uvicorn>=0.30

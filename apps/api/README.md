@@ -7,6 +7,7 @@ FastAPI adapter for the core `fin_rag` package.
 Run the API from the repository root:
 
 ```bash
+pip install -e .   # optional but recommended
 uvicorn apps.api.app:app --reload
 ```
 
