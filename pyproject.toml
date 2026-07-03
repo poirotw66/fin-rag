@@ -9,12 +9,20 @@ description = "CLI-first public financial regulation Agentic RAG MVP."
 requires-python = ">=3.11"
 dependencies = [
   "beautifulsoup4>=4.12",
+  "fastapi>=0.115",
   "google-genai>=1.0",
+  "httpx>=0.28",
   "langgraph>=0.2",
   "numpy>=1.26",
   "pyyaml>=6.0",
   "requests>=2.31",
+  "uvicorn>=0.30",
 ]
 
+[tool.setuptools]
+include-package-data = false
+
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "."]
+include = ["fin_rag*", "apps*"]
+exclude = ["tests*"]
