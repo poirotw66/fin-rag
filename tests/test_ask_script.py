@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -10,7 +11,7 @@ sys.path.insert(0, str(ROOT))
 
 from fin_rag.agent import AgentResult
 from fin_rag.types import Chunk, RetrievedChunk
-from scripts.ask import format_result
+from scripts.ask import format_result, result_to_json_payload
 
 
 def _chunk(*, doc_id: str, article: str, title: str, text: str, score: float = 0.9) -> RetrievedChunk:
@@ -76,6 +77,35 @@ class AskScriptTests(unittest.TestCase):
         self.assertIn("Citations", rendered)
         self.assertIn("- none", rendered)
         self.assertIn("Retrieved Chunks", rendered)
+
+    def test_result_to_json_payload_includes_question_and_retrieved_chunks(self) -> None:
+        result = AgentResult(
+            answer="客戶身分確認應辨識實質受益人。（aml-finst 第 7 條）",
+            refused=False,
+            citation_hit=True,
+            retrieved=[
+                _chunk(
+                    doc_id="aml-finst",
+                    article="第 7 條",
+                    title="金融機構防制洗錢辦法",
+                    text="金融機構應進行客戶身分確認，包含確認客戶身分、辨識實質受益人。",
+                )
+            ],
+        )
+
+        payload = result_to_json_payload("客戶身分確認 CDD 要做哪些事？", result)
+        rendered = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(payload["question"], "客戶身分確認 CDD 要做哪些事？")
+        self.assertEqual(payload["answer"], result.answer)
+        self.assertFalse(payload["refused"])
+        self.assertTrue(payload["citation_hit"])
+        self.assertEqual(
+            payload["citations"],
+            [{"doc_id": "aml-finst", "article": "第 7 條", "title": "金融機構防制洗錢辦法"}],
+        )
+        self.assertEqual(payload["retrieved"][0]["score"], 0.9)
+        self.assertIn("金融機構應進行客戶身分確認", rendered)
 
 
 if __name__ == "__main__":
