@@ -16,7 +16,7 @@
   track: B
   question: 發現內控缺失影響信譽，是否須通報金管會？
   expected_refs:
-    - [sit-material-event, paragraph-1]
+    - [sit-material-event, 第 1 條]
   expect_refusal: false
 
 - id: B4
@@ -30,7 +30,7 @@
   track: B
   question: 董事對外兼任變動，內控上應做什麼？
   expected_refs:
-    - [sit-biz-rules, 第 20 條]
+    - [sit-biz-rules, 第 2 條]
     - [sit-fund-mgmt, 第 11 條]
   expect_refusal: false
 
@@ -80,7 +80,7 @@
   track: A
   question: 銀行 AML 內部控制誰負責？
   expected_refs:
-    - [aml-bank-ic, 第 5 條]
+    - [aml-bank-ic, 第 6 條]
   expect_refusal: false
 
 - id: A6
@@ -95,6 +95,20 @@
   question: 洗錢防制法由哪個機關辦理防制洗錢業務？
   expected_refs:
     - [aml-act, 第 27 條]
+  expect_refusal: false
+
+- id: E1
+  track: E
+  question: 金融機構處理客戶個資應遵循何種原則？
+  expected_refs:
+    - [privacy-finance, 第 5 條]
+  expect_refusal: false
+
+- id: E2
+  track: E
+  question: 依證券交易法，獨立董事與公司間有何利害關係限制？
+  expected_refs:
+    - [sit-securities-act, 第 14-2 條]
   expect_refusal: false
 
 - id: C1

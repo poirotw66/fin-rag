@@ -6,15 +6,23 @@ The MVP is not legal advice. Answers must cite retrieved public-law text and ref
 
 ## Current Inventory
 
-Phase 2a ingests five public government sources into article-level chunks:
+Phase 2 ingests nine public government sources into article-level chunks:
 
-- `sit-fund-mgmt`: MOJ `G0400082`, revision date `113-12-25`, `100` chunks
-- `sit-biz-rules`: MOJ `G0400078`, revision date `113-11-27`, `47` chunks
-- `sit-material-event`: FSC `GL001531`, publication date `104-04-14`, `3` chunks
-- `aml-finst`: MOJ `G0380252`, revision date `110-12-14`, `16` chunks
-- `aml-bank-ic`: MOJ `G0380262`, revision date `110-12-14`, `11` chunks
+| doc_id | source | chunks (approx.) | track |
+|--------|--------|------------------|-------|
+| sit-fund-mgmt | MOJ G0400082 | 100 | sit-related-party |
+| sit-biz-rules | MOJ G0400078 | 47 | sit-related-party |
+| sit-material-event | FSC GL001531 | 3 | sit-reporting |
+| aml-finst | MOJ G0380252 | 16 | aml |
+| aml-bank-ic | MOJ G0380262 | 11 | aml |
+| aml-act | MOJ G0380131 | 58 | aml |
+| sit-trust-act | MOJ G0400121 | 102 | sit-related-party |
+| privacy-finance | MOJ I0050021 subset | 5 | cross-law |
+| sit-securities-act | MOJ G0400001 subset | 4 | sit-related-party |
 
-Current total: `177` chunks in `corpus/chunks.jsonl`.
+Current total: `346` chunks in `corpus/chunks.jsonl`.
+
+Batch 2 subset definitions live in `corpus/subsets.yaml`. Full MOJ downloads are kept as `corpus/raw/{doc_id}.full.txt`; working chunk inputs are the extracted `corpus/raw/{doc_id}.txt` files.
 
 ## Ingest SOP
 
@@ -25,6 +33,8 @@ Current total: `177` chunks in `corpus/chunks.jsonl`.
 2. Convert the MOJ HTML into plain text with standalone article-marker lines:
    - `python scripts/moj_html_to_txt.py <doc_id>`
 3. Keep both `{doc_id}.html` and `{doc_id}.txt` under `corpus/raw/`.
+4. For subset documents, copy the full text to `{doc_id}.full.txt`, then extract articles:
+   - `python scripts/extract_article_subset.py <doc_id> "第 2 條,第 5 條"`
 
 ### FSC or other non-MOJ public texts
 
@@ -39,14 +49,17 @@ Run the corpus pipeline from the repository root:
 ```bash
 python scripts/chunk_by_article.py
 python scripts/build_index.py
+python scripts/spot_check_corpus.py
 python -m unittest tests.test_corpus_coverage -v
 python eval/run.py
 ```
 
-Save the current evaluation baseline when the run is stable:
+`build_index.py` reuses existing embeddings for unchanged chunks and only embeds new or updated articles.
+
+Save evaluation baselines when a batch is stable:
 
 ```bash
-cp eval/last_report.json eval/baseline-phase2a.json
+cp eval/last_report.json eval/baseline-phase2b.json
 ```
 
 ## Sources
@@ -55,11 +68,14 @@ cp eval/last_report.json eval/baseline-phase2a.json
 - FSC notices use the official FSC law system URL recorded in `corpus/manifest.json`
 - `corpus/manifest.json` is the source of truth for `source_url`, `revision_date`, and file format metadata
 
-## Current Baseline
+## Spot-check articles
 
-- Coverage check: pass
-- Eval `total`: `12`
-- Eval `citation_hit_rate`: `0.8333`
-- Eval `refusal_accuracy`: `0.8333`
-- Eval `expected_refs_retrieved_rate`: `0.6667`
+Required articles for regression checks are listed in `corpus/spot_check.yaml`.
 
+## Baselines
+
+| file | scope |
+|------|-------|
+| `eval/baseline-phase1.json` | 12 questions, excerpt corpus |
+| `eval/baseline-phase2a.json` | 12 questions, five full-text laws |
+| `eval/baseline-phase2b.json` | 18 questions, batch 2 subset laws (after eval run) |

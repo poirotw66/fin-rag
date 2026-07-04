@@ -10,7 +10,7 @@ Phase 1 baseline: `eval/baseline-phase1.json`（corpus 節錄版，11 chunks）
 
 本 repo 已達可運作的 MVP 階段。
 
-- 公開法規 corpus 入庫與條文 chunk 已完成（目前 337 chunks，見 `python scripts/spot_check_corpus.py`）
+- 公開法規 corpus 入庫與條文 chunk 已完成（目前 346 chunks，見 `python scripts/spot_check_corpus.py`）
 - Gemini embedding 與生成已接入執行流程
 - 檢索使用本機 JSONL 向量索引
 - 問答流程：`classify → retrieve → generate → citation_check → 輸出／拒答`
@@ -28,6 +28,7 @@ Phase 1 baseline: `eval/baseline-phase1.json`（corpus 節錄版，11 chunks）
 - **Phase 2（進行中）**：完整法條 ingest + 跨增相關法規 + golden 擴充
   - Phase 2a baseline: `eval/baseline-phase2a.json`（5 份全文）
   - Batch 1: `aml-act`、`sit-trust-act`（golden 16 題）
+  - Batch 2: `privacy-finance`、`sit-securities-act`（golden 18 題，含 E 軌 cross-law）
 - **Phase 3（待 corpus 穩定）**：hybrid retrieval（BM25 + embedding）、檢索低分拒答
 
 詳細計畫：`docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md`

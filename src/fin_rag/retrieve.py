@@ -6,7 +6,7 @@ from .vector_store import read_index, search
 
 
 class Retriever:
-    def __init__(self, *, client: GeminiClient, index_path: str, top_k: int = 5):
+    def __init__(self, *, client: GeminiClient, index_path: str, top_k: int = 8):
         self.client = client
         self.index_path = index_path
         self.top_k = top_k

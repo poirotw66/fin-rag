@@ -81,3 +81,21 @@ def read_chunks_jsonl(path: str | Path) -> list[Chunk]:
 def _normalize_text(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
+
+def _canonical_article(value: str) -> str:
+    return re.sub(r"\s+", "", value).strip()
+
+
+def extract_articles(text: str, wanted: list[str]) -> str:
+    wanted_set = {_canonical_article(article) for article in wanted}
+    matches = list(ARTICLE_RE.finditer(text))
+    blocks: list[str] = []
+    for index, match in enumerate(matches):
+        article = _normalize_text(match.group(1))
+        if _canonical_article(article) not in wanted_set:
+            continue
+        start = match.start()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        blocks.append(text[start:end].strip())
+    return "\n\n".join(blocks) + ("\n" if blocks else "")
+
