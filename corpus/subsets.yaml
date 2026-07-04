@@ -1,0 +1,20 @@
+privacy-finance:
+  source_pcode: I0050021
+  track: cross-law
+  title: 個人資料保護法（金融客戶資料節錄）
+  articles:
+    - "第 2 條"
+    - "第 5 條"
+    - "第 19 條"
+    - "第 20 條"
+    - "第 20-1 條"
+
+sit-securities-act:
+  source_pcode: G0400001
+  track: sit-related-party
+  title: 證券交易法（關係人／董事義務節錄）
+  articles:
+    - "第 14-2 條"
+    - "第 14-3 條"
+    - "第 14-5 條"
+    - "第 26-3 條"

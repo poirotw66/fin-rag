@@ -28,6 +28,7 @@ Latest verified local results:
 - **Phase 2 (in progress)**: Full statute ingest, cross-track related laws, golden-set expansion
   - Phase 2a baseline: `eval/baseline-phase2a.json` (5 full texts)
   - Batch 1: `aml-act`, `sit-trust-act` (16 golden questions)
+  - Batch 2: `privacy-finance`, `sit-securities-act` (18 golden questions, track E cross-law)
 - **Phase 3 (after corpus stabilizes)**: Hybrid retrieval (BM25 + embedding), low-score retrieval refusal
 
 Details: [Phase 2 corpus expansion plan](docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md) · Traditional Chinese: [readme-tw.md](readme-tw.md#路線圖)
