@@ -1,9 +1,11 @@
+import os
 import unittest
 
 from fin_rag.config import Settings
 from fin_rag.gemini import GeminiClient
 
 
+@unittest.skipUnless(os.environ.get("GEMINI_API_KEY"), "GEMINI_API_KEY not set")
 class GeminiIntegrationTests(unittest.TestCase):
     def test_real_gemini_embedding_returns_vector(self):
         settings = Settings.from_env()

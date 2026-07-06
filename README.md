@@ -6,30 +6,41 @@ CLI-first financial regulation Agentic RAG MVP built on public MOJ and FSC sourc
 
 ## Status
 
-This repository is currently at a working MVP stage.
+Phase 1 baseline: `eval/baseline-phase1.json` (excerpt corpus, 11 chunks)
 
-- Public-law corpus ingestion and chunking are in place.
-- Gemini embeddings and generation are wired into the runtime flow.
-- Retrieval uses a local JSONL vector index.
-- The answer flow runs through `classify -> retrieve -> generate -> citation_check -> final/refusal`.
-- LangGraph is used when installed, with a sequential fallback for constrained environments.
-- Golden-set evaluation and automated tests are passing.
+Phase 2 baseline: `eval/baseline-phase2b.json` (9 statutes, 20 golden questions, hybrid retrieval, all metrics 1.0)
 
-Latest verified local results:
+This repository is at a working MVP stage with **Phase 2 complete**.
 
-- `python run_tests.py`: 10/10 tests passed
-- `eval/last_report.json`: `citation_hit_rate = 1.0`
-- `eval/last_report.json`: `refusal_accuracy = 1.0`
-- `eval/last_report.json`: `expected_refs_retrieved_rate = 1.0`
+- Public-law corpus ingestion and chunking are in place (346 chunks, 9 statutes; `python scripts/spot_check_corpus.py`)
+- Gemini embeddings and generation are wired into the runtime flow
+- Retrieval defaults to **hybrid** (BM25 + embedding, RRF fusion); set `FIN_RAG_RETRIEVAL_MODE=embedding` for vector-only
+- Answer flow: `classify -> retrieve -> produce_answer (with citation retry) -> final/refusal`
+- LangGraph is used when installed, with a sequential fallback for constrained environments
+- Golden-set evaluation (20 questions) and automated tests pass in CI
+
+Frozen benchmark (`eval/baseline-phase2b.json`):
+
+- `citation_hit_rate`: 1.0
+- `refusal_accuracy`: 1.0
+- `expected_refs_retrieved_rate`: 1.0
+
+Reproduce locally:
+
+```bash
+python run_tests.py
+FIN_RAG_RETRIEVAL_MODE=hybrid python eval/run.py
+```
+
+GitHub Actions runs `python run_tests.py` on push and pull requests (skips Gemini integration tests without an API key).
 
 ## Roadmap
 
 - **Phase 1 (done)**: Cited answers, refusal gate, eval harness, CLI + API + Web demo
-- **Phase 2 (in progress)**: Full statute ingest, cross-track related laws, golden-set expansion
-  - Phase 2a baseline: `eval/baseline-phase2a.json` (5 full texts)
-  - Batch 1: `aml-act`, `sit-trust-act` (16 golden questions)
-  - Batch 2: `privacy-finance`, `sit-securities-act` (18 golden questions, track E cross-law)
-- **Phase 3 (after corpus stabilizes)**: Hybrid retrieval (BM25 + embedding), low-score retrieval refusal
+- **Phase 2 (done)**: Full statute ingest, cross-law expansion, 20 golden questions, hybrid retrieval
+  - Phase 2a baseline: `eval/baseline-phase2a.json` (12 questions, 5 full texts)
+  - Phase 2b baseline: `eval/baseline-phase2b.json` (20 questions, 9 statutes, track E cross-law)
+- **Phase 3 (in progress)**: Low-score retrieval refusal, reduce hardcoded retrieval hints, optional FAISS
 
 Details: [Phase 2 corpus expansion plan](docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md) · Traditional Chinese: [readme-tw.md](readme-tw.md#路線圖)
 
@@ -122,14 +133,14 @@ flowchart TD
 | Step | Module | Behavior |
 |------|--------|----------|
 | **classify** | `citations.should_refuse_question` | Rule-based gate for penalty amounts, compensation, criminal liability, unstable figures |
-| **retrieve** | `retrieve.Retriever` | Embed question → cosine search on `index.jsonl` → top-k `RetrievedChunk` |
+| **retrieve** | `retrieve.Retriever` | Hybrid (BM25 + embedding) or vector-only; title hints keep key docs in top-k |
 | **generate** | `gemini.GeminiClient` | System prompt (`prompts/system.md`) + retrieved excerpts → Traditional Chinese answer |
-| **citation_check** | `citations.citation_hit` | Parse `(doc 第 N 條)` in answer; must match retrieved metadata or refuse |
+| **citation_check** | `citations.citation_hit` | Parse `doc_id 第 N 條` (including `第 14-2 條`); one retry on failure, then refuse |
 | **refuse** | `agent.REFUSAL` | Fixed disclaimer; `refused=true`, `citation_hit=false` |
 
 ### Evaluation loop
 
-`eval/golden.yaml` holds 12 questions (tracks A/B/C). `eval/run.py` runs the agent on each item and writes `eval/last_report.json` with `citation_hit_rate`, `refusal_accuracy`, and `expected_refs_retrieved_rate`.
+`eval/golden.yaml` holds **20 questions** (tracks A×7, B×7, E×4, C×2). `eval/run.py` runs the agent on each item and writes `eval/last_report.json` with `citation_hit_rate`, `refusal_accuracy`, and `expected_refs_retrieved_rate`. Requires a Gemini API key; CI does not run eval (cost and non-determinism).
 
 ## Project Layout
 
@@ -157,6 +168,7 @@ Create `.env` in the project root:
 GEMINI_API_KEY=...
 FIN_RAG_GENERATION_MODEL=gemini-2.5-flash
 FIN_RAG_EMBEDDING_MODEL=gemini-embedding-2
+FIN_RAG_RETRIEVAL_MODE=hybrid
 ```
 
 Install dependencies with your preferred environment manager, then run the commands below from the repo root.
@@ -221,6 +233,7 @@ Current MVP tracks:
 
 - Track A: AML, CDD, and internal-control compliance
 - Track B: investment-trust related-party and material-event compliance
+- Track E: privacy-law excerpt, securities-act director-duty excerpt (cross-law)
 - Track C: refusal behavior for penalties, compensation, and unstable claims
 
 Media reports are intentionally excluded from retrieval and cannot be used as legal citations.

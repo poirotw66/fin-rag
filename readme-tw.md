@@ -8,28 +8,39 @@
 
 Phase 1 baseline: `eval/baseline-phase1.json`（corpus 節錄版，11 chunks）
 
-本 repo 已達可運作的 MVP 階段。
+Phase 2 baseline: `eval/baseline-phase2b.json`（9 份法規、20 題 golden、hybrid 檢索，三項指標 100%）
 
-- 公開法規 corpus 入庫與條文 chunk 已完成（目前 346 chunks，見 `python scripts/spot_check_corpus.py`）
+本 repo 已達可運作的 MVP 階段，**Phase 2 已收尾**。
+
+- 公開法規 corpus 入庫與條文 chunk 已完成（目前 346 chunks、9 份法規，見 `python scripts/spot_check_corpus.py`）
 - Gemini embedding 與生成已接入執行流程
-- 檢索使用本機 JSONL 向量索引
-- 問答流程：`classify → retrieve → generate → citation_check → 輸出／拒答`
+- 檢索預設為 **hybrid**（BM25 + embedding，RRF 融合）；可設 `FIN_RAG_RETRIEVAL_MODE=embedding` 改回純向量
+- 問答流程：`classify → retrieve → produce_answer（含 citation 重試）→ 輸出／拒答`
 - 已安裝 LangGraph 時走圖流程；否則使用等價的循序 fallback
-- Golden set 評估與自動化測試可通過
+- Golden set 20 題評估與自動化測試可通過
 
-最近一次本機驗證結果（請以你執行 `eval/run.py` 的輸出為準）：
+最近一次驗證基準（`eval/baseline-phase2b.json`）：
 
-- `python run_tests.py`
-- `eval/last_report.json`：`citation_hit_rate`、`refusal_accuracy`、`expected_refs_retrieved_rate`
+- `citation_hit_rate`: 1.0
+- `refusal_accuracy`: 1.0
+- `expected_refs_retrieved_rate`: 1.0
+
+本機重現：
+
+```bash
+python run_tests.py
+FIN_RAG_RETRIEVAL_MODE=hybrid python eval/run.py
+```
+
+GitHub Actions 於 push/PR 執行 `python run_tests.py`（不含需 API key 的 Gemini 整合測試）。
 
 ## 路線圖
 
 - **Phase 1（完成）**：可引用、可拒答、可 eval、CLI + API + Web demo
-- **Phase 2（進行中）**：完整法條 ingest + 跨增相關法規 + golden 擴充
-  - Phase 2a baseline: `eval/baseline-phase2a.json`（5 份全文）
-  - Batch 1: `aml-act`、`sit-trust-act`（golden 16 題）
-  - Batch 2: `privacy-finance`、`sit-securities-act`（golden 18 題，含 E 軌 cross-law）
-- **Phase 3（待 corpus 穩定）**：hybrid retrieval（BM25 + embedding）、檢索低分拒答
+- **Phase 2（完成）**：完整法條 ingest + 跨法規擴充 + golden 20 題 + hybrid 檢索
+  - Phase 2a baseline: `eval/baseline-phase2a.json`（12 題、5 份全文）
+  - Phase 2b baseline: `eval/baseline-phase2b.json`（20 題、9 份法規、含 E 軌 cross-law）
+- **Phase 3（進行中）**：檢索低分拒答、減少 retrieval hints 硬編碼、（可選）FAISS
 
 詳細計畫：`docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md`
 
@@ -122,14 +133,14 @@ flowchart TD
 | 步驟 | 模組 | 行為 |
 |------|------|------|
 | **classify** | `citations.should_refuse_question` | 規則式閘門：裁罰金額、賠償、刑事責任、不穩定數字 |
-| **retrieve** | `retrieve.Retriever` | 問題嵌入 → 對 `index.jsonl` 餘弦相似度搜尋 → top-k |
+| **retrieve** | `retrieve.Retriever` | hybrid（BM25 + embedding）或純向量；法規名 hints 保證關鍵 doc 進 top-k |
 | **generate** | `gemini.GeminiClient` | 系統提示（`prompts/system.md`）+ 檢索片段 → 繁體中文回答 |
-| **citation_check** | `citations.citation_hit` | 解析回答中 `(法規名 第 N 條)`，須對應檢索 metadata，否則拒答 |
+| **citation_check** | `citations.citation_hit` | 解析 `doc_id 第 N 條`（含 `第 14-2 條` 等）；未對齊則重試一次，仍失敗則拒答 |
 | **refuse** | `agent.REFUSAL` | 固定拒答與免責；`refused=true` |
 
 ### 評估迴圈
 
-`eval/golden.yaml` 含 12 題（軌 A／B／C）。`eval/run.py` 逐題跑 agent，輸出 `eval/last_report.json`（`citation_hit_rate`、`refusal_accuracy`、`expected_refs_retrieved_rate`）。
+`eval/golden.yaml` 含 **20 題**（軌 A×7、B×7、E×4、C×2）。`eval/run.py` 逐題跑 agent，輸出 `eval/last_report.json`（`citation_hit_rate`、`refusal_accuracy`、`expected_refs_retrieved_rate`）。需 Gemini API key；CI 不跑 eval（成本與非決定性）。
 
 ## 目錄結構
 
@@ -158,6 +169,7 @@ docs/                設計與實作計畫
 GEMINI_API_KEY=...
 FIN_RAG_GENERATION_MODEL=gemini-2.5-flash
 FIN_RAG_EMBEDDING_MODEL=gemini-embedding-2
+FIN_RAG_RETRIEVAL_MODE=hybrid
 ```
 
 建議安裝方式：
@@ -234,7 +246,12 @@ cd apps/web && npm install && npm run dev
 - 國泰投信會被金管會罰多少錢？
 - 全委帳戶 4.54 億損失由誰賠償？
 
-完整 12 題見 `eval/golden.yaml`。
+**軌 E（跨法）**
+
+- 金融機構處理客戶個資應遵循何種原則？
+- 依證券交易法，獨立董事與公司間有何利害關係限制？
+
+完整 20 題見 `eval/golden.yaml`。
 
 ## Corpus 範圍
 
@@ -242,6 +259,7 @@ MVP 雙軌：
 
 - **軌 A**：洗錢防制、CDD、內控稽核
 - **軌 B**：投信利害關係人、重大偶發事件通報
+- **軌 E**：個資法節錄、證券交易法董事義務節錄（cross-law）
 - **軌 C**：裁罰、賠償等拒答行為（eval 專用，不進向量庫）
 
 媒體報導刻意不納入檢索，不得作為法條依據。

@@ -78,4 +78,4 @@ Required articles for regression checks are listed in `corpus/spot_check.yaml`.
 |------|-------|
 | `eval/baseline-phase1.json` | 12 questions, excerpt corpus |
 | `eval/baseline-phase2a.json` | 12 questions, five full-text laws |
-| `eval/baseline-phase2b.json` | 18 questions, batch 2 subset laws (after eval run) |
+| `eval/baseline-phase2b.json` | 20 questions, nine statutes (hybrid retrieval; all metrics 1.0) |
