@@ -47,7 +47,22 @@ class Retriever:
                 bm25_index=self._load_bm25_index(bundle.chunks),
                 rrf_k=self.rrf_k,
             )
-        return _apply_retrieval_hints(question, ranked, self.top_k)
+        return ranked[:self.top_k]
+
+    def retrieve_queries(self, queries: list[str]) -> list[RetrievedChunk]:
+        fused_scores: dict[tuple[str, str], float] = {}
+        chunks: dict[tuple[str, str], Chunk] = {}
+        for query in queries:
+            for rank, item in enumerate(self.retrieve(query)):
+                key = (item.chunk.doc_id, item.chunk.article)
+                fused_scores[key] = fused_scores.get(key, 0.0) + 1.0 / (self.rrf_k + rank + 1)
+                chunks[key] = item.chunk
+        ordered = sorted(fused_scores, key=lambda key: fused_scores[key], reverse=True)
+        budget = min(self.top_k * len(queries), 24)
+        return [
+            RetrievedChunk(chunk=chunks[key], score=fused_scores[key])
+            for key in ordered[:budget]
+        ]
 
     def _load_bundle(self) -> LoadedIndex:
         if self._bundle is None:
@@ -65,80 +80,3 @@ class Retriever:
                 self._bm25_index = BM25Index.build([chunk_search_text(chunk) for chunk in chunks])
         return self._bm25_index
 
-
-TITLE_DOC_HINTS: tuple[tuple[str, str], ...] = (
-    ("證券交易法", "sit-securities-act"),
-    ("個人資料保護法", "privacy-finance"),
-    ("洗錢防制法", "aml-act"),
-    ("金融機構防制洗錢辦法", "aml-finst"),
-    ("證券投資信託基金管理辦法", "sit-fund-mgmt"),
-    ("證券投資信託事業管理規則", "sit-biz-rules"),
-    ("證券投資信託及顧問法", "sit-trust-act"),
-    ("重大偶發事件", "sit-material-event"),
-)
-
-
-def _retrieval_hints(question: str) -> list[tuple[str, str | None]]:
-    hints: list[tuple[str, str | None]] = []
-    for phrase, doc_id in TITLE_DOC_HINTS:
-        if phrase in question:
-            hints.append((doc_id, None))
-    if "獨立董事" in question and "董事會" in question:
-        hints.append(("sit-securities-act", "第 14-3 條"))
-    elif "獨立董事" in question:
-        hints.append(("sit-securities-act", "第 14-2 條"))
-    if "利害關係" in question and "基金" in question:
-        hints.append(("sit-fund-mgmt", "第 10 條"))
-    if "董事" in question and "兼任" in question:
-        hints.append(("sit-fund-mgmt", "第 11 條"))
-        hints.append(("sit-biz-rules", "第 2 條"))
-    return hints
-
-
-def _apply_retrieval_hints(
-    question: str,
-    ranked: list[RetrievedChunk],
-    top_k: int,
-) -> list[RetrievedChunk]:
-    hints = _retrieval_hints(question)
-    if not hints:
-        return ranked[:top_k]
-
-    selected: list[RetrievedChunk] = []
-    used: set[tuple[str, str]] = set()
-    for doc_id, article in hints:
-        match = _find_hint_match(ranked, doc_id, article)
-        if match is None:
-            continue
-        key = (match.chunk.doc_id, match.chunk.article)
-        if key in used:
-            continue
-        selected.append(match)
-        used.add(key)
-
-    for item in ranked:
-        key = (item.chunk.doc_id, item.chunk.article)
-        if key in used:
-            continue
-        selected.append(item)
-        used.add(key)
-        if len(selected) >= top_k:
-            break
-    return selected[:top_k]
-
-
-def _find_hint_match(
-    ranked: list[RetrievedChunk],
-    doc_id: str,
-    article: str | None,
-) -> RetrievedChunk | None:
-    if article is not None:
-        return next(
-            (
-                item
-                for item in ranked
-                if item.chunk.doc_id == doc_id and item.chunk.article == article
-            ),
-            None,
-        )
-    return next((item for item in ranked if item.chunk.doc_id == doc_id), None)

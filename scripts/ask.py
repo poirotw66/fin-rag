@@ -121,7 +121,11 @@ def main() -> int:
         retrieval_mode=settings.retrieval_mode,
         vector_backend=settings.vector_backend,
     )
-    agent = FinRagAgent(client=client, retrieve=retriever.retrieve)
+    agent = FinRagAgent(
+        client=client,
+        retrieve=retriever.retrieve,
+        retrieve_queries=retriever.retrieve_queries,
+    )
     result = agent.answer(question)
     if json_output:
         print(json.dumps(result_to_json_payload(question, result), ensure_ascii=False, indent=2))

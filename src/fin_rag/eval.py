@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -33,31 +34,16 @@ def load_golden(path: str | Path) -> list[GoldenCase]:
     ]
 
 
-def run_eval(agent: FinRagAgent, cases: list[GoldenCase]) -> dict[str, Any]:
-    results = []
-    for case in cases:
-        started = time.perf_counter()
-        result = agent.answer(case.question)
-        latency_ms = round((time.perf_counter() - started) * 1000, 2)
-        retrieved_refs = {(item.chunk.doc_id, item.chunk.article) for item in result.retrieved}
-        expected_refs = set(case.expected_refs)
-        expected_hit = expected_refs.issubset(retrieved_refs) if expected_refs else True
-        citation_ok = result.citation_hit if not case.expect_refusal else True
-        refusal_ok = result.refused == case.expect_refusal
-        results.append(
-            {
-                "id": case.id,
-                "track": case.track,
-                "question": case.question,
-                "refused": result.refused,
-                "expected_refusal": case.expect_refusal,
-                "refusal_correct": refusal_ok,
-                "citation_hit": citation_ok,
-                "expected_refs_retrieved": expected_hit,
-                "latency_ms": latency_ms,
-                "answer": result.answer,
-            }
-        )
+def run_eval(
+    agent: FinRagAgent,
+    cases: list[GoldenCase],
+    *,
+    max_workers: int = 1,
+) -> dict[str, Any]:
+    if max_workers <= 1:
+        results = [_evaluate_case(agent, case) for case in cases]
+    else:
+        results = _evaluate_cases_parallel(agent, cases, max_workers=max_workers)
     total = len(results)
     return {
         "total": total,
@@ -66,6 +52,47 @@ def run_eval(agent: FinRagAgent, cases: list[GoldenCase]) -> dict[str, Any]:
         "expected_refs_retrieved_rate": _rate(item["expected_refs_retrieved"] for item in results),
         "results": results,
     }
+
+
+def _evaluate_case(agent: FinRagAgent, case: GoldenCase) -> dict[str, Any]:
+    started = time.perf_counter()
+    result = agent.answer(case.question)
+    latency_ms = round((time.perf_counter() - started) * 1000, 2)
+    retrieved_refs = {(item.chunk.doc_id, item.chunk.article) for item in result.retrieved}
+    expected_refs = set(case.expected_refs)
+    expected_hit = expected_refs.issubset(retrieved_refs) if expected_refs else True
+    citation_ok = result.citation_hit if not case.expect_refusal else True
+    refusal_ok = result.refused == case.expect_refusal
+    return {
+        "id": case.id,
+        "track": case.track,
+        "question": case.question,
+        "refused": result.refused,
+        "expected_refusal": case.expect_refusal,
+        "refusal_correct": refusal_ok,
+        "citation_hit": citation_ok,
+        "expected_refs_retrieved": expected_hit,
+        "latency_ms": latency_ms,
+        "answer": result.answer,
+    }
+
+
+def _evaluate_cases_parallel(
+    agent: FinRagAgent,
+    cases: list[GoldenCase],
+    *,
+    max_workers: int,
+) -> list[dict[str, Any]]:
+    ordered: list[dict[str, Any] | None] = [None] * len(cases)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_evaluate_case, agent, case): index
+            for index, case in enumerate(cases)
+        }
+        for future in futures:
+            index = futures[future]
+            ordered[index] = future.result()
+    return [item for item in ordered if item is not None]
 
 
 def _rate(values) -> float:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -29,11 +30,14 @@ class FinRagAgent:
         *,
         client: GeminiClient,
         retrieve: Callable[[str], list[RetrievedChunk]],
+        retrieve_queries: Callable[[list[str]], list[RetrievedChunk]] | None = None,
         system_prompt_path: str | Path | None = None,
     ):
         self.client = client
         self.retrieve = retrieve
+        self.retrieve_queries = retrieve_queries or (lambda queries: retrieve(queries[0]))
         self.system_prompt = _read_system_prompt(system_prompt_path)
+        self.retrieval_rewrite_prompt = _read_retrieval_rewrite_prompt()
         self.graph = self._build_graph()
 
     def answer(self, question: str) -> AgentResult:
@@ -53,15 +57,17 @@ class FinRagAgent:
 
         graph = StateGraph(dict)
         graph.add_node("classify", self._classify_node)
+        graph.add_node("rewrite_query", self._rewrite_query_node)
         graph.add_node("retrieve", self._retrieve_node)
         graph.add_node("produce_answer", self._produce_answer_node)
         graph.add_node("refuse", self._refuse_node)
         graph.set_entry_point("classify")
         graph.add_conditional_edges(
             "classify",
-            lambda state: "refuse" if state["refuse_now"] else "retrieve",
-            {"refuse": "refuse", "retrieve": "retrieve"},
+            lambda state: "refuse" if state["refuse_now"] else "rewrite_query",
+            {"refuse": "refuse", "rewrite_query": "rewrite_query"},
         )
+        graph.add_edge("rewrite_query", "retrieve")
         graph.add_edge("retrieve", "produce_answer")
         graph.add_conditional_edges(
             "produce_answer",
@@ -79,8 +85,27 @@ class FinRagAgent:
         state.setdefault("answer", "")
         return state
 
+    def _rewrite_query_node(self, state: dict[str, Any]) -> dict[str, Any]:
+        state["retrieval_queries"] = self._rewrite_for_retrieval(state["question"])
+        return state
+
+    def _rewrite_for_retrieval(self, question: str) -> list[str]:
+        catalog = _read_corpus_catalog()
+        prompt = (
+            f"{self.retrieval_rewrite_prompt}\n\n"
+            f"{catalog}\n\n"
+            f"使用者問題:\n{question}\n\n"
+            "請只輸出 1 至 3 行繁體中文檢索查詢，每行一句，不要其他說明。"
+        )
+        rewritten = self.client.generate(prompt).strip()
+        lines = [line.strip() for line in rewritten.splitlines() if line.strip()]
+        if not lines:
+            return [question]
+        return lines
+
     def _retrieve_node(self, state: dict[str, Any]) -> dict[str, Any]:
-        state["retrieved"] = self.retrieve(state["question"])
+        queries = list(dict.fromkeys([state["question"], *state.get("retrieval_queries", [])]))
+        state["retrieved"] = self.retrieve_queries(queries)
         return state
 
     def _generate_node(self, state: dict[str, Any]) -> dict[str, Any]:
@@ -129,6 +154,7 @@ class _SequentialGraph:
         state = self.agent._classify_node(state)
         if state["refuse_now"]:
             return self.agent._refuse_node(state)
+        state = self.agent._rewrite_query_node(state)
         state = self.agent._retrieve_node(state)
         state = self.agent._produce_answer_node(state)
         if not state["citation_hit"]:
@@ -139,4 +165,18 @@ class _SequentialGraph:
 def _read_system_prompt(path: str | Path | None) -> str:
     prompt_path = Path(path) if path else Path(__file__).resolve().parent / "prompts" / "system.md"
     return prompt_path.read_text(encoding="utf-8")
+
+
+def _read_retrieval_rewrite_prompt() -> str:
+    prompt_path = Path(__file__).resolve().parent / "prompts" / "retrieval_rewrite.md"
+    return prompt_path.read_text(encoding="utf-8")
+
+
+def _read_corpus_catalog() -> str:
+    manifest_path = Path(__file__).resolve().parents[2] / "corpus" / "manifest.json"
+    if not manifest_path.exists():
+        return ""
+    entries = json.loads(manifest_path.read_text(encoding="utf-8"))
+    lines = [f"- {entry['doc_id']}: {entry['title']}" for entry in entries]
+    return "本系統 corpus 收錄法規（doc_id: 標題）:\n" + "\n".join(lines)
 

@@ -14,7 +14,7 @@ Phase 2 baseline: `eval/baseline-phase2b.json`（9 份法規、20 題 golden、h
 
 - 公開法規 corpus 入庫與條文 chunk 已完成（目前 346 chunks、9 份法規，見 `python scripts/spot_check_corpus.py`）
 - Gemini embedding 與生成已接入執行流程
-- 檢索預設為 **hybrid**（BM25 + embedding，RRF 融合）；向量索引預設 **FAISS**（`corpus/index.faiss` + `index_meta.jsonl`，`auto` 時優先於 JSONL 全量掃描）
+- 檢索預設為 **hybrid**（BM25 + embedding，RRF 融合）；向量索引預設 **FAISS**（`corpus/index.faiss` + `index_meta.jsonl`，`auto` 時優先於 JSONL 全量掃描）；BM25 詞表於 build 時寫入 `corpus/index_bm25.json` 並於 runtime 載入
 - 問答流程：`classify → retrieve → produce_answer（含 citation 重試）→ 輸出／拒答`
 - 已安裝 LangGraph 時走圖流程；否則使用等價的循序 fallback
 - Golden set 20 題評估與自動化測試可通過
@@ -40,7 +40,7 @@ GitHub Actions 於 push/PR 執行 `python run_tests.py`（不含需 API key 的 
 - **Phase 2（完成）**：完整法條 ingest + 跨法規擴充 + golden 20 題 + hybrid 檢索
   - Phase 2a baseline: `eval/baseline-phase2a.json`（12 題、5 份全文）
   - Phase 2b baseline: `eval/baseline-phase2b.json`（20 題、9 份法規、含 E 軌 cross-law）
-- **Phase 3（進行中）**：檢索低分拒答、減少 retrieval hints 硬編碼、（可選）FAISS
+- **Phase 3（下一步）**：檢索低分拒答、對外文章（blog / wiki）；檢索 hints 已改為 LLM query rewrite
 
 詳細計畫：`docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md`
 
@@ -70,8 +70,8 @@ Fin RAG 分三層：**離線 corpus 管線**、**核心 agent 執行期**（`src
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  src/fin_rag                                                    │
-│  FinRagAgent  →  classify → retrieve → generate → citation_check│
-│  GeminiClient（嵌入 + 生成）   Retriever（top-k 檢索）            │
+│  FinRagAgent  →  classify → rewrite_query → retrieve → produce_answer │
+│  GeminiClient（嵌入 + 生成）   Retriever（hybrid top-k）                  │
 └────────────────────────────┬────────────────────────────────────┘
                              │ 讀取
                              ▼
@@ -88,7 +88,10 @@ Fin RAG 分三層：**離線 corpus 管線**、**核心 agent 執行期**（`src
 1. **Manifest** — `corpus/manifest.json` 登錄每份法規（`doc_id`、標題、來源 URL、軌別 `track`、修正日期）。
 2. **原文** — `corpus/raw/` 存放 MOJ／金管會下載的 HTML 或文字。
 3. **切 chunk** — `scripts/chunk_by_article.py` 依「第 N 條」切分，輸出 `corpus/chunks.jsonl`（每條一 chunk，含 `doc_id`、`article`、`text`、`track`）。
-4. **建索引** — `scripts/build_index.py` 以 Gemini 嵌入各 chunk，寫入 `corpus/index.jsonl`（metadata + 向量）。
+4. **建索引** — `scripts/build_index.py` 以 Gemini 嵌入各 chunk，寫入：
+   - `corpus/index.jsonl` — embedding 快取（增量 rebuild）
+   - `corpus/index.faiss` + `corpus/index_meta.jsonl` — FAISS 向量索引（`FIN_RAG_VECTOR_BACKEND=auto` 時預設使用）
+   - `corpus/index_bm25.json` — 持久化 BM25 詞表（runtime 載入，免每次記憶體重建）
 
 ```text
 manifest.json + raw/*.html
@@ -96,8 +99,8 @@ manifest.json + raw/*.html
         ▼  chunk_by_article.py
   chunks.jsonl
         │
-        ▼  build_index.py（Gemini embeddings + FAISS）
-   index.jsonl + index.faiss + index_meta.jsonl
+        ▼  build_index.py（Gemini embeddings + FAISS + BM25）
+   index.jsonl + index.faiss + index_meta.jsonl + index_bm25.json
 ```
 
 ### 線上問答流程
@@ -122,20 +125,27 @@ manifest.json + raw/*.html
 flowchart TD
     Q[使用者問題] --> C[classify 分類]
     C -->|裁罰／賠償／新聞數字等| R[refuse 拒答]
-    C -->|一般法規問題| RET[retrieve 檢索 top-k]
-    RET --> G[generate 生成回答]
+    C -->|一般法規問題| RQ[rewrite_query 改寫查詢]
+    RQ --> RET[retrieve 檢索 top-k]
+    RET --> PA[produce_answer]
+    PA --> G[generate 生成回答]
     G --> CH[citation_check 引用檢查]
     CH -->|引用落在檢索結果| OUT[輸出回答]
-    CH -->|缺少或未對齊引用| R
+    CH -->|缺少或未對齊引用| RETRY[重試生成一次]
+    RETRY --> CH2[再次引用檢查]
+    CH2 -->|對齊| OUT
+    CH2 -->|仍失敗| R
     R --> REF[拒答文案 + 免責]
 ```
 
 | 步驟 | 模組 | 行為 |
 |------|------|------|
 | **classify** | `citations.should_refuse_question` | 規則式閘門：裁罰金額、賠償、刑事責任、不穩定數字 |
-| **retrieve** | `retrieve.Retriever` | hybrid（BM25 + embedding）或純向量；法規名 hints 保證關鍵 doc 進 top-k |
+| **rewrite_query** | `agent.FinRagAgent` | 以 LLM 將問題改寫為檢索用查詢（補法規名稱、展開術語） |
+| **retrieve** | `retrieve.Retriever` | hybrid（BM25 + FAISS/embedding，RRF）或純向量；依融合排序取 top-k |
+| **produce_answer** | `agent.FinRagAgent` | 生成 → 引用檢查 → 失敗重試一次，仍失敗則拒答 |
 | **generate** | `gemini.GeminiClient` | 系統提示（`prompts/system.md`）+ 檢索片段 → 繁體中文回答 |
-| **citation_check** | `citations.citation_hit` | 解析 `doc_id 第 N 條`（含 `第 14-2 條` 等）；未對齊則重試一次，仍失敗則拒答 |
+| **citation_check** | `citations.citation_hit` | 解析 `doc_id 第 N 條`（含 `第 14-2 條` 等）；須對齊檢索結果 |
 | **refuse** | `agent.REFUSAL` | 固定拒答與免責；`refused=true` |
 
 ### 評估迴圈
@@ -172,6 +182,14 @@ FIN_RAG_EMBEDDING_MODEL=gemini-embedding-2
 FIN_RAG_RETRIEVAL_MODE=hybrid
 FIN_RAG_VECTOR_BACKEND=auto
 ```
+
+| 變數 | 預設值 | 可選值 | 用途 |
+|------|--------|--------|------|
+| `GEMINI_API_KEY` | — | API key | embed、生成、eval 必備 |
+| `FIN_RAG_GENERATION_MODEL` | `gemini-2.5-flash` | Gemini model id | 回答生成 |
+| `FIN_RAG_EMBEDDING_MODEL` | `gemini-embedding-2` | Gemini model id | 查詢與索引嵌入 |
+| `FIN_RAG_RETRIEVAL_MODE` | `hybrid` | `hybrid`、`embedding` | BM25 + 向量 RRF，或純向量 |
+| `FIN_RAG_VECTOR_BACKEND` | `auto` | `auto`、`faiss`、`jsonl` | FAISS、JSONL 全掃、或自動偏好 FAISS |
 
 建議安裝方式：
 

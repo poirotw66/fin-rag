@@ -14,7 +14,7 @@ This repository is at a working MVP stage with **Phase 2 complete**.
 
 - Public-law corpus ingestion and chunking are in place (346 chunks, 9 statutes; `python scripts/spot_check_corpus.py`)
 - Gemini embeddings and generation are wired into the runtime flow
-- Retrieval defaults to **hybrid** (BM25 + embedding, RRF fusion); vector search defaults to **FAISS** (`corpus/index.faiss` + `index_meta.jsonl`, preferred when `FIN_RAG_VECTOR_BACKEND=auto`)
+- Retrieval defaults to **hybrid** (BM25 + embedding, RRF fusion); vector search defaults to **FAISS** (`corpus/index.faiss` + `index_meta.jsonl`, preferred when `FIN_RAG_VECTOR_BACKEND=auto`); BM25 lexicon is persisted as `corpus/index_bm25.json` at build time
 - Answer flow: `classify -> retrieve -> produce_answer (with citation retry) -> final/refusal`
 - LangGraph is used when installed, with a sequential fallback for constrained environments
 - Golden-set evaluation (20 questions) and automated tests pass in CI
@@ -40,7 +40,7 @@ GitHub Actions runs `python run_tests.py` on push and pull requests (skips Gemin
 - **Phase 2 (done)**: Full statute ingest, cross-law expansion, 20 golden questions, hybrid retrieval
   - Phase 2a baseline: `eval/baseline-phase2a.json` (12 questions, 5 full texts)
   - Phase 2b baseline: `eval/baseline-phase2b.json` (20 questions, 9 statutes, track E cross-law)
-- **Phase 3 (in progress)**: Low-score retrieval refusal, reduce hardcoded retrieval hints, optional FAISS
+- **Phase 3 (next)**: Low-score retrieval refusal, external write-ups (blog / wiki); retrieval hints removed in favor of LLM query rewrite
 
 Details: [Phase 2 corpus expansion plan](docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md) · Traditional Chinese: [readme-tw.md](readme-tw.md#路線圖)
 
@@ -70,8 +70,8 @@ Fin RAG is split into three layers: an **offline corpus pipeline**, a **core age
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  src/fin_rag                                                    │
-│  FinRagAgent  →  classify → retrieve → generate → citation_check│
-│  GeminiClient (embed + generate)   Retriever (top-k search)     │
+│  FinRagAgent  →  classify → rewrite_query → retrieve → produce_answer │
+│  GeminiClient (embed + generate)   Retriever (hybrid top-k)           │
 └────────────────────────────┬────────────────────────────────────┘
                              │ reads
                              ▼
@@ -88,7 +88,10 @@ Run once (or again after source law updates):
 1. **Manifest** — `corpus/manifest.json` lists each public law document (`doc_id`, title, source URL, track, revision date).
 2. **Raw sources** — HTML/text under `corpus/raw/` from MOJ / FSC public sites.
 3. **Chunking** — `scripts/chunk_by_article.py` parses `第 N 條` boundaries and writes `corpus/chunks.jsonl` (one chunk per article, with `doc_id`, `article`, `text`, `track`).
-4. **Indexing** — `scripts/build_index.py` embeds each chunk with Gemini and writes `corpus/index.jsonl` (embedding cache), `corpus/index.faiss`, and `corpus/index_meta.jsonl`.
+4. **Indexing** — `scripts/build_index.py` embeds each chunk with Gemini and writes:
+   - `corpus/index.jsonl` — embedding cache for incremental rebuilds
+   - `corpus/index.faiss` + `corpus/index_meta.jsonl` — FAISS vector index (runtime default when `FIN_RAG_VECTOR_BACKEND=auto`)
+   - `corpus/index_bm25.json` — persisted BM25 lexicon (loaded at runtime instead of rebuilding in memory)
 
 ```text
 manifest.json + raw/*.html
@@ -96,8 +99,8 @@ manifest.json + raw/*.html
         ▼  chunk_by_article.py
   chunks.jsonl
         │
-        ▼  build_index.py  (Gemini embeddings + FAISS)
-   index.jsonl + index.faiss + index_meta.jsonl
+        ▼  build_index.py  (Gemini embeddings + FAISS + BM25)
+   index.jsonl + index.faiss + index_meta.jsonl + index_bm25.json
 ```
 
 ### Online Q&A flow
@@ -122,20 +125,27 @@ All user-facing paths call the same `FinRagAgent`:
 flowchart TD
     Q[User question] --> C[classify]
     C -->|case-specific penalty / compensation / news figures| R[refuse]
-    C -->|otherwise| RET[retrieve top-k chunks]
-    RET --> G[generate with system prompt + context]
+    C -->|otherwise| RQ[rewrite_query]
+    RQ --> RET[retrieve top-k chunks]
+    RET --> PA[produce_answer]
+    PA --> G[generate with system prompt + context]
     G --> CH[citation_check]
     CH -->|citations grounded in retrieved chunks| OUT[final answer]
-    CH -->|missing or ungrounded citations| R
+    CH -->|missing or ungrounded citations| RETRY[retry generate once]
+    RETRY --> CH2[citation_check]
+    CH2 -->|grounded| OUT
+    CH2 -->|still ungrounded| R
     R --> REF[refusal + disclaimer]
 ```
 
 | Step | Module | Behavior |
 |------|--------|----------|
 | **classify** | `citations.should_refuse_question` | Rule-based gate for penalty amounts, compensation, criminal liability, unstable figures |
-| **retrieve** | `retrieve.Retriever` | Hybrid (BM25 + embedding) or vector-only; title hints keep key docs in top-k |
+| **rewrite_query** | `agent.FinRagAgent` | LLM rewrites the user question into a retrieval-optimized query (statute names, expanded terms) |
+| **retrieve** | `retrieve.Retriever` | Hybrid (BM25 + FAISS/embedding, RRF) or vector-only; top-k from fused ranking |
+| **produce_answer** | `agent.FinRagAgent` | Generate → citation check → one retry on failure, then refuse |
 | **generate** | `gemini.GeminiClient` | System prompt (`prompts/system.md`) + retrieved excerpts → Traditional Chinese answer |
-| **citation_check** | `citations.citation_hit` | Parse `doc_id 第 N 條` (including `第 14-2 條`); one retry on failure, then refuse |
+| **citation_check** | `citations.citation_hit` | Parse `doc_id 第 N 條` (including `第 14-2 條`); must match retrieved chunks |
 | **refuse** | `agent.REFUSAL` | Fixed disclaimer; `refused=true`, `citation_hit=false` |
 
 ### Evaluation loop
@@ -171,6 +181,14 @@ FIN_RAG_EMBEDDING_MODEL=gemini-embedding-2
 FIN_RAG_RETRIEVAL_MODE=hybrid
 FIN_RAG_VECTOR_BACKEND=auto
 ```
+
+| Variable | Default | Values | Purpose |
+|----------|---------|--------|---------|
+| `GEMINI_API_KEY` | — | API key | Required for embed, generate, and eval |
+| `FIN_RAG_GENERATION_MODEL` | `gemini-2.5-flash` | Gemini model id | Answer generation |
+| `FIN_RAG_EMBEDDING_MODEL` | `gemini-embedding-2` | Gemini model id | Query and index embeddings |
+| `FIN_RAG_RETRIEVAL_MODE` | `hybrid` | `hybrid`, `embedding` | BM25 + vector RRF, or vector-only |
+| `FIN_RAG_VECTOR_BACKEND` | `auto` | `auto`, `faiss`, `jsonl` | Use FAISS index, JSONL scan, or auto-prefer FAISS |
 
 Install dependencies with your preferred environment manager, then run the commands below from the repo root.
 

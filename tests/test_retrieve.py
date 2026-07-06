@@ -1,7 +1,6 @@
 import unittest
 
 from fin_rag.bm25 import BM25Index, tokenize
-from fin_rag.retrieve import _apply_retrieval_hints
 from fin_rag.types import Chunk, RetrievedChunk
 from fin_rag.vector_store import VectorRecord, hybrid_search, search
 
@@ -64,26 +63,48 @@ class HybridSearchTests(unittest.TestCase):
         self.assertEqual(embedding_only[0].chunk.article, "第 12 條")
 
 
-class RetrievalHintTests(unittest.TestCase):
-    def test_apply_retrieval_hints_injects_expected_law_article(self) -> None:
-        ranked = [
-            _record("sit-trust-act", "第 59 條", "全權委託限制", [0.0, 0.0, 1.0]),
-            _record("sit-fund-mgmt", "第 54 條", "私募基金限制", [0.0, 1.0, 0.0]),
-            _record("sit-fund-mgmt", "第 10 條", "基金不得投資利害關係公司證券", [1.0, 0.0, 0.0]),
-        ]
-        ranked = [
-            RetrievedChunk(chunk=record.chunk, score=index / 10)
-            for index, record in enumerate(ranked)
+class MultiQueryRetrieveTests(unittest.TestCase):
+    def test_retrieve_queries_merges_best_score_per_chunk(self) -> None:
+        from fin_rag.retrieve import Retriever
+
+        records = [
+            _record("aml-finst", "第 7 條", "客戶身分確認程序", [0.0, 1.0, 0.0]),
+            _record("aml-finst", "第 12 條", "交易紀錄保存期限", [0.0, 0.0, 1.0]),
         ]
 
-        results = _apply_retrieval_hints(
-            "全委帳戶與基金對利害關係人交易限制有何不同？",
-            ranked,
-            top_k=2,
-        )
+        class FakeClient:
+            def embed(self, text: str) -> list[float]:
+                if "客戶" in text:
+                    return [0.0, 1.0, 0.0]
+                return [0.0, 0.0, 1.0]
 
-        self.assertEqual(results[0].chunk.doc_id, "sit-fund-mgmt")
-        self.assertEqual(results[0].chunk.article, "第 10 條")
+        retriever = Retriever.__new__(Retriever)
+        retriever.client = FakeClient()
+        retriever.index_path = "unused"
+        retriever.top_k = 2
+        retriever.retrieval_mode = "embedding"
+        retriever.vector_backend = "jsonl"
+        retriever.rrf_k = 60
+        retriever._bundle = None
+        retriever._bm25_index = None
+        def fake_retrieve(query: str) -> list[RetrievedChunk]:
+            if "客戶" in query:
+                return [
+                    RetrievedChunk(chunk=records[0].chunk, score=0.9),
+                    RetrievedChunk(chunk=records[1].chunk, score=0.1),
+                ]
+            return [
+                RetrievedChunk(chunk=records[1].chunk, score=0.9),
+                RetrievedChunk(chunk=records[0].chunk, score=0.1),
+            ]
+
+        retriever.retrieve = fake_retrieve
+
+        results = retriever.retrieve_queries(["客戶身分確認", "交易紀錄保存"])
+
+        self.assertEqual(len(results), 2)
+        self.assertEqual(results[0].chunk.article, "第 7 條")
+        self.assertEqual(results[1].chunk.article, "第 12 條")
 
 
 if __name__ == "__main__":

@@ -32,4 +32,8 @@ def build_agent() -> FinRagAgent:
         retrieval_mode=settings.retrieval_mode,
         vector_backend=settings.vector_backend,
     )
-    return FinRagAgent(client=client, retrieve=retriever.retrieve)
+    return FinRagAgent(
+        client=client,
+        retrieve=retriever.retrieve,
+        retrieve_queries=retriever.retrieve_queries,
+    )

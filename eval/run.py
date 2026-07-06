@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -28,8 +29,16 @@ def main() -> int:
         retrieval_mode=settings.retrieval_mode,
         vector_backend=settings.vector_backend,
     )
-    agent = FinRagAgent(client=client, retrieve=retriever.retrieve)
-    report = run_eval(agent, load_golden(ROOT / "eval" / "golden.yaml"))
+    agent = FinRagAgent(
+        client=client,
+        retrieve=retriever.retrieve,
+        retrieve_queries=retriever.retrieve_queries,
+    )
+    report = run_eval(
+        agent,
+        load_golden(ROOT / "eval" / "golden.yaml"),
+        max_workers=max(1, int(os.environ.get("FIN_RAG_EVAL_WORKERS", "5"))),
+    )
     out_path = ROOT / "eval" / "last_report.json"
     out_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({k: v for k, v in report.items() if k != "results"}, ensure_ascii=False, indent=2))
