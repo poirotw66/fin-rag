@@ -5,6 +5,7 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
+from .bm25 import BM25Index
 from .types import Chunk, RetrievedChunk
 
 
@@ -47,6 +48,38 @@ def search(records: list[VectorRecord], query_embedding: list[float], top_k: int
     ]
     ranked.sort(key=lambda item: item.score, reverse=True)
     return ranked[:top_k]
+
+
+def hybrid_search(
+    records: list[VectorRecord],
+    query_embedding: list[float],
+    query_text: str,
+    top_k: int,
+    *,
+    bm25_index: BM25Index,
+    rrf_k: int = 60,
+) -> list[RetrievedChunk]:
+    if not records:
+        return []
+    if len(records) != len(bm25_index.corpus):
+        raise ValueError("BM25 index size must match vector records")
+
+    embedding_order = sorted(
+        range(len(records)),
+        key=lambda index: cosine_similarity(query_embedding, records[index].embedding),
+        reverse=True,
+    )
+    bm25_scores = bm25_index.score(query_text)
+    bm25_order = sorted(range(len(records)), key=lambda index: bm25_scores[index], reverse=True)
+
+    fused_scores = [0.0] * len(records)
+    for rank, index in enumerate(embedding_order):
+        fused_scores[index] += 1.0 / (rrf_k + rank + 1)
+    for rank, index in enumerate(bm25_order):
+        fused_scores[index] += 1.0 / (rrf_k + rank + 1)
+
+    selected = sorted(range(len(records)), key=lambda index: fused_scores[index], reverse=True)[:top_k]
+    return [RetrievedChunk(chunk=records[index].chunk, score=fused_scores[index]) for index in selected]
 
 
 def cosine_similarity(left: list[float], right: list[float]) -> float:

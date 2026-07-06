@@ -24,5 +24,9 @@ def build_agent() -> FinRagAgent:
         generation_model=settings.generation_model,
         embedding_model=settings.embedding_model,
     )
-    retriever = Retriever(client=client, index_path=str(index_path))
+    retriever = Retriever(
+        client=client,
+        index_path=str(index_path),
+        retrieval_mode=settings.retrieval_mode,
+    )
     return FinRagAgent(client=client, retrieve=retriever.retrieve)

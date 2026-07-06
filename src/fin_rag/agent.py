@@ -54,8 +54,7 @@ class FinRagAgent:
         graph = StateGraph(dict)
         graph.add_node("classify", self._classify_node)
         graph.add_node("retrieve", self._retrieve_node)
-        graph.add_node("generate", self._generate_node)
-        graph.add_node("citation_check", self._citation_check_node)
+        graph.add_node("produce_answer", self._produce_answer_node)
         graph.add_node("refuse", self._refuse_node)
         graph.set_entry_point("classify")
         graph.add_conditional_edges(
@@ -63,10 +62,9 @@ class FinRagAgent:
             lambda state: "refuse" if state["refuse_now"] else "retrieve",
             {"refuse": "refuse", "retrieve": "retrieve"},
         )
-        graph.add_edge("retrieve", "generate")
-        graph.add_edge("generate", "citation_check")
+        graph.add_edge("retrieve", "produce_answer")
         graph.add_conditional_edges(
-            "citation_check",
+            "produce_answer",
             lambda state: "done" if state["citation_hit"] else "refuse",
             {"done": END, "refuse": "refuse"},
         )
@@ -90,12 +88,30 @@ class FinRagAgent:
             f"[{item.chunk.doc_id} {item.chunk.article}] {item.chunk.title}: {item.chunk.text}"
             for item in state["retrieved"]
         )
-        prompt = f"{self.system_prompt}\n\n公開法規片段:\n{context}\n\n使用者問題:\n{state['question']}\n\n請用繁體中文回答。"
+        retry_note = ""
+        if state.get("retry_generation"):
+            retry_note = (
+                "\n\n上一輪回答未通過引用檢查。"
+                "請務必在每個法規事實句附上（doc_id 第 N 條），且 doc_id 與條號必須來自上方片段。"
+            )
+        prompt = (
+            f"{self.system_prompt}\n\n公開法規片段:\n{context}\n\n"
+            f"使用者問題:\n{state['question']}{retry_note}\n\n請用繁體中文回答。"
+        )
         state["answer"] = self.client.generate(prompt)
         return state
 
     def _citation_check_node(self, state: dict[str, Any]) -> dict[str, Any]:
         state["citation_hit"] = citation_hit(state["answer"], state["retrieved"])
+        return state
+
+    def _produce_answer_node(self, state: dict[str, Any]) -> dict[str, Any]:
+        state = self._generate_node(state)
+        state = self._citation_check_node(state)
+        if not state["citation_hit"]:
+            state["retry_generation"] = True
+            state = self._generate_node(state)
+            state = self._citation_check_node(state)
         return state
 
     def _refuse_node(self, state: dict[str, Any]) -> dict[str, Any]:
@@ -114,8 +130,7 @@ class _SequentialGraph:
         if state["refuse_now"]:
             return self.agent._refuse_node(state)
         state = self.agent._retrieve_node(state)
-        state = self.agent._generate_node(state)
-        state = self.agent._citation_check_node(state)
+        state = self.agent._produce_answer_node(state)
         if not state["citation_hit"]:
             state = self.agent._refuse_node(state)
         return state

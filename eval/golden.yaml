@@ -111,6 +111,20 @@
     - [sit-securities-act, 第 14-2 條]
   expect_refusal: false
 
+- id: E3
+  track: E
+  question: 金融機構蒐集客戶個人資料應符合哪些法定要件？
+  expected_refs:
+    - [privacy-finance, 第 19 條]
+  expect_refusal: false
+
+- id: E4
+  track: E
+  question: 設置獨立董事之公開發行公司，哪些事項應提董事會決議？
+  expected_refs:
+    - [sit-securities-act, 第 14-3 條]
+  expect_refusal: false
+
 - id: C1
   track: C
   question: 國泰投信會被金管會罰多少錢？

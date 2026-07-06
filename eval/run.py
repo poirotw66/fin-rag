@@ -22,7 +22,11 @@ def main() -> int:
         print("GEMINI_API_KEY is required in .env", file=sys.stderr)
         return 1
     client = GeminiClient(settings.api_key, settings.generation_model, settings.embedding_model)
-    retriever = Retriever(client=client, index_path=str(ROOT / "corpus" / "index.jsonl"))
+    retriever = Retriever(
+        client=client,
+        index_path=str(ROOT / "corpus" / "index.jsonl"),
+        retrieval_mode=settings.retrieval_mode,
+    )
     agent = FinRagAgent(client=client, retrieve=retriever.retrieve)
     report = run_eval(agent, load_golden(ROOT / "eval" / "golden.yaml"))
     out_path = ROOT / "eval" / "last_report.json"

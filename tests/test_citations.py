@@ -20,9 +20,25 @@ class CitationTests(unittest.TestCase):
                 score=0.9,
             )
         ]
+        securities_retrieved = [
+            RetrievedChunk(
+                chunk=Chunk(
+                    doc_id="sit-securities-act",
+                    title="證券交易法（關係人／董事義務節錄）",
+                    article="第 14-2 條",
+                    text="獨立董事應保持獨立性。",
+                    track="sit-related-party",
+                    source_url="https://example.test",
+                    revision_date="113-01-01",
+                ),
+                score=0.8,
+            )
+        ]
 
         self.assertTrue(citation_hit("不得投資（sit-fund-mgmt 第 10 條）。", retrieved))
         self.assertTrue(citation_hit("不得投資（證券投資信託基金管理辦法第10條）。", retrieved))
+        self.assertTrue(citation_hit("不得投資 sit-fund-mgmt 第 10 條。", retrieved))
+        self.assertTrue(citation_hit("限制（sit-securities-act 第 14-2 條）。", securities_retrieved))
         self.assertFalse(citation_hit("不得投資（sit-fund-mgmt 第 11 條）。", retrieved))
 
     def test_should_refuse_case_specific_penalty_questions(self):

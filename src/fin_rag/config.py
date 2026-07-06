@@ -11,16 +11,21 @@ class Settings:
     api_key: str | None
     generation_model: str
     embedding_model: str
+    retrieval_mode: str
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
         source = dict(os.environ if env is None else env)
         if env is None:
             source.update(_read_dotenv(Path(".env")))
+        retrieval_mode = source.get("FIN_RAG_RETRIEVAL_MODE", "hybrid").strip().lower()
+        if retrieval_mode not in {"hybrid", "embedding"}:
+            raise ValueError("FIN_RAG_RETRIEVAL_MODE must be 'hybrid' or 'embedding'")
         return cls(
             api_key=source.get("GEMINI_API_KEY"),
             generation_model=source.get("FIN_RAG_GENERATION_MODEL", "gemini-2.5-flash"),
             embedding_model=source.get("FIN_RAG_EMBEDDING_MODEL", "gemini-embedding-2"),
+            retrieval_mode=retrieval_mode,
         )
 
 
