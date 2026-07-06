@@ -13,6 +13,8 @@ class Settings:
     embedding_model: str
     retrieval_mode: str
     vector_backend: str
+    min_retrieval_score: float
+    max_retrieval_rounds: int
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
@@ -25,12 +27,18 @@ class Settings:
         vector_backend = source.get("FIN_RAG_VECTOR_BACKEND", "auto").strip().lower()
         if vector_backend not in {"auto", "faiss", "jsonl"}:
             raise ValueError("FIN_RAG_VECTOR_BACKEND must be 'auto', 'faiss', or 'jsonl'")
+        min_retrieval_score = float(source.get("FIN_RAG_MIN_RETRIEVAL_SCORE", "0.028"))
+        max_retrieval_rounds = int(source.get("FIN_RAG_MAX_RETRIEVAL_ROUNDS", "1"))
+        if max_retrieval_rounds < 0:
+            raise ValueError("FIN_RAG_MAX_RETRIEVAL_ROUNDS must be >= 0")
         return cls(
             api_key=source.get("GEMINI_API_KEY"),
             generation_model=source.get("FIN_RAG_GENERATION_MODEL", "gemini-2.5-flash"),
             embedding_model=source.get("FIN_RAG_EMBEDDING_MODEL", "gemini-embedding-2"),
             retrieval_mode=retrieval_mode,
             vector_backend=vector_backend,
+            min_retrieval_score=min_retrieval_score,
+            max_retrieval_rounds=max_retrieval_rounds,
         )
 
 

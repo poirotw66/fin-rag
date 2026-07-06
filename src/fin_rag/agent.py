@@ -7,13 +7,29 @@ from typing import Any, Callable
 
 from .citations import citation_hit, should_refuse_question
 from .gemini import GeminiClient
+from .retrieval_assess import (
+    is_retrieval_sufficient,
+    merge_retrieved_chunks,
+    retrieval_confidence,
+)
 from .types import RetrievedChunk
 
 
-REFUSAL = (
+REFUSAL_POLICY = (
     "我不能判斷特定個案的裁罰金額、賠償責任或刑事責任。"
     "以下回答僅能依公開法規提供一般程序與條文方向，且不構成法律意見。"
 )
+
+REFUSAL_LOW_RETRIEVAL = (
+    "依目前可檢索到的公開法規片段，不足以支持可靠回答。"
+    "請改以更具體的法規名稱或條文關鍵詞重新提問。本回答不構成法律意見。"
+)
+
+REFUSAL_MESSAGES = {
+    "policy": REFUSAL_POLICY,
+    "low_retrieval": REFUSAL_LOW_RETRIEVAL,
+    "citation": REFUSAL_POLICY,
+}
 
 
 @dataclass(frozen=True)
@@ -32,12 +48,17 @@ class FinRagAgent:
         retrieve: Callable[[str], list[RetrievedChunk]],
         retrieve_queries: Callable[[list[str]], list[RetrievedChunk]] | None = None,
         system_prompt_path: str | Path | None = None,
+        min_retrieval_score: float = 0.028,
+        max_retrieval_rounds: int = 1,
     ):
         self.client = client
         self.retrieve = retrieve
         self.retrieve_queries = retrieve_queries or (lambda queries: retrieve(queries[0]))
+        self.min_retrieval_score = min_retrieval_score
+        self.max_retrieval_rounds = max_retrieval_rounds
         self.system_prompt = _read_system_prompt(system_prompt_path)
         self.retrieval_rewrite_prompt = _read_retrieval_rewrite_prompt()
+        self.retrieval_rewrite_retry_prompt = _read_retrieval_rewrite_retry_prompt()
         self.graph = self._build_graph()
 
     def answer(self, question: str) -> AgentResult:
@@ -59,34 +80,73 @@ class FinRagAgent:
         graph.add_node("classify", self._classify_node)
         graph.add_node("rewrite_query", self._rewrite_query_node)
         graph.add_node("retrieve", self._retrieve_node)
+        graph.add_node("assess_retrieval", self._assess_retrieval_node)
+        graph.add_node("rewrite_query_retry", self._rewrite_query_retry_node)
         graph.add_node("produce_answer", self._produce_answer_node)
         graph.add_node("refuse", self._refuse_node)
         graph.set_entry_point("classify")
         graph.add_conditional_edges(
             "classify",
-            lambda state: "refuse" if state["refuse_now"] else "rewrite_query",
+            self._route_after_classify,
             {"refuse": "refuse", "rewrite_query": "rewrite_query"},
         )
         graph.add_edge("rewrite_query", "retrieve")
-        graph.add_edge("retrieve", "produce_answer")
+        graph.add_edge("retrieve", "assess_retrieval")
+        graph.add_conditional_edges(
+            "assess_retrieval",
+            self._route_after_assess,
+            {"produce_answer": "produce_answer", "rewrite_query_retry": "rewrite_query_retry", "refuse": "refuse"},
+        )
+        graph.add_edge("rewrite_query_retry", "retrieve")
         graph.add_conditional_edges(
             "produce_answer",
-            lambda state: "done" if state["citation_hit"] else "refuse",
+            self._route_after_produce,
             {"done": END, "refuse": "refuse"},
         )
         graph.add_edge("refuse", END)
         return graph.compile()
 
+    def _route_after_classify(self, state: dict[str, Any]) -> str:
+        return "refuse" if state["refuse_now"] else "rewrite_query"
+
+    def _route_after_assess(self, state: dict[str, Any]) -> str:
+        if state["retrieval_sufficient"]:
+            return "produce_answer"
+        if state.get("retrieval_round", 0) < self.max_retrieval_rounds:
+            return "rewrite_query_retry"
+        return "refuse"
+
+    def _route_after_produce(self, state: dict[str, Any]) -> str:
+        if state["citation_hit"]:
+            return "done"
+        state["refusal_reason"] = "citation"
+        return "refuse"
+
     def _classify_node(self, state: dict[str, Any]) -> dict[str, Any]:
         state["refuse_now"] = should_refuse_question(state["question"])
+        if state["refuse_now"]:
+            state["refusal_reason"] = "policy"
         state.setdefault("retrieved", [])
+        state.setdefault("retrieval_round", 0)
+        state.setdefault("prior_queries", [])
         state.setdefault("citation_hit", False)
         state.setdefault("refused", False)
         state.setdefault("answer", "")
         return state
 
     def _rewrite_query_node(self, state: dict[str, Any]) -> dict[str, Any]:
+        state["retrieval_round"] = 0
+        state["prior_queries"] = []
         state["retrieval_queries"] = self._rewrite_for_retrieval(state["question"])
+        state["prior_queries"] = list(state["retrieval_queries"])
+        return state
+
+    def _rewrite_query_retry_node(self, state: dict[str, Any]) -> dict[str, Any]:
+        state["retrieval_round"] = state.get("retrieval_round", 0) + 1
+        state["retrieval_queries"] = self._rewrite_for_retrieval_retry(state)
+        state["prior_queries"] = list(
+            dict.fromkeys([*state.get("prior_queries", []), *state["retrieval_queries"]])
+        )
         return state
 
     def _rewrite_for_retrieval(self, question: str) -> list[str]:
@@ -97,15 +157,47 @@ class FinRagAgent:
             f"使用者問題:\n{question}\n\n"
             "請只輸出 1 至 3 行繁體中文檢索查詢，每行一句，不要其他說明。"
         )
-        rewritten = self.client.generate(prompt).strip()
+        return self._parse_rewrite_lines(self.client.generate(prompt), question)
+
+    def _rewrite_for_retrieval_retry(self, state: dict[str, Any]) -> list[str]:
+        catalog = _read_corpus_catalog()
+        weak_hits = _format_weak_retrieval_summary(state.get("retrieved", []))
+        prior = "\n".join(f"- {query}" for query in state.get("prior_queries", [])) or "- （無）"
+        prompt = (
+            f"{self.retrieval_rewrite_retry_prompt}\n\n"
+            f"{catalog}\n\n"
+            f"使用者問題:\n{state['question']}\n\n"
+            f"上一輪已試查詢:\n{prior}\n\n"
+            f"上一輪檢索片段摘要:\n{weak_hits}\n\n"
+            "請只輸出 1 至 3 行繁體中文檢索查詢，每行一句，不要其他說明。"
+        )
+        return self._parse_rewrite_lines(self.client.generate(prompt), state["question"])
+
+    def _parse_rewrite_lines(self, rewritten: str, fallback: str) -> list[str]:
         lines = [line.strip() for line in rewritten.splitlines() if line.strip()]
-        if not lines:
-            return [question]
-        return lines
+        return lines or [fallback]
 
     def _retrieve_node(self, state: dict[str, Any]) -> dict[str, Any]:
         queries = list(dict.fromkeys([state["question"], *state.get("retrieval_queries", [])]))
-        state["retrieved"] = self.retrieve_queries(queries)
+        new_items = self.retrieve_queries(queries)
+        if state.get("retrieval_round", 0) > 0 and state.get("retrieved"):
+            state["retrieved"] = merge_retrieved_chunks(state["retrieved"], new_items)
+        else:
+            state["retrieved"] = new_items
+        return state
+
+    def _assess_retrieval_node(self, state: dict[str, Any]) -> dict[str, Any]:
+        confidence = retrieval_confidence(state.get("retrieved", []))
+        state["retrieval_confidence"] = confidence
+        state["retrieval_sufficient"] = is_retrieval_sufficient(
+            confidence,
+            min_score=self.min_retrieval_score,
+        )
+        if (
+            not state["retrieval_sufficient"]
+            and state.get("retrieval_round", 0) >= self.max_retrieval_rounds
+        ):
+            state["refusal_reason"] = "low_retrieval"
         return state
 
     def _generate_node(self, state: dict[str, Any]) -> dict[str, Any]:
@@ -140,7 +232,8 @@ class FinRagAgent:
         return state
 
     def _refuse_node(self, state: dict[str, Any]) -> dict[str, Any]:
-        state["answer"] = REFUSAL
+        reason = state.get("refusal_reason", "policy")
+        state["answer"] = REFUSAL_MESSAGES.get(reason, REFUSAL_POLICY)
         state["refused"] = True
         state["citation_hit"] = False
         return state
@@ -155,9 +248,19 @@ class _SequentialGraph:
         if state["refuse_now"]:
             return self.agent._refuse_node(state)
         state = self.agent._rewrite_query_node(state)
-        state = self.agent._retrieve_node(state)
+        while True:
+            state = self.agent._retrieve_node(state)
+            state = self.agent._assess_retrieval_node(state)
+            if state["retrieval_sufficient"]:
+                break
+            if state.get("retrieval_round", 0) < self.agent.max_retrieval_rounds:
+                state = self.agent._rewrite_query_retry_node(state)
+                continue
+            state["refusal_reason"] = "low_retrieval"
+            return self.agent._refuse_node(state)
         state = self.agent._produce_answer_node(state)
         if not state["citation_hit"]:
+            state["refusal_reason"] = "citation"
             state = self.agent._refuse_node(state)
         return state
 
@@ -172,6 +275,11 @@ def _read_retrieval_rewrite_prompt() -> str:
     return prompt_path.read_text(encoding="utf-8")
 
 
+def _read_retrieval_rewrite_retry_prompt() -> str:
+    prompt_path = Path(__file__).resolve().parent / "prompts" / "retrieval_rewrite_retry.md"
+    return prompt_path.read_text(encoding="utf-8")
+
+
 def _read_corpus_catalog() -> str:
     manifest_path = Path(__file__).resolve().parents[2] / "corpus" / "manifest.json"
     if not manifest_path.exists():
@@ -180,3 +288,11 @@ def _read_corpus_catalog() -> str:
     lines = [f"- {entry['doc_id']}: {entry['title']}" for entry in entries]
     return "本系統 corpus 收錄法規（doc_id: 標題）:\n" + "\n".join(lines)
 
+
+def _format_weak_retrieval_summary(retrieved: list[RetrievedChunk], limit: int = 5) -> str:
+    if not retrieved:
+        return "- （無）"
+    lines: list[str] = []
+    for item in retrieved[:limit]:
+        lines.append(f"- {item.chunk.doc_id} {item.chunk.article} {item.chunk.title} (score={item.score:.4f})")
+    return "\n".join(lines)

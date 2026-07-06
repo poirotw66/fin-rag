@@ -15,7 +15,7 @@ This repository is at a working MVP stage with **Phase 2 complete**.
 - Public-law corpus ingestion and chunking are in place (346 chunks, 9 statutes; `python scripts/spot_check_corpus.py`)
 - Gemini embeddings and generation are wired into the runtime flow
 - Retrieval defaults to **hybrid** (BM25 + embedding, RRF fusion); vector search defaults to **FAISS** (`corpus/index.faiss` + `index_meta.jsonl`, preferred when `FIN_RAG_VECTOR_BACKEND=auto`); BM25 lexicon is persisted as `corpus/index_bm25.json` at build time
-- Answer flow: `classify -> retrieve -> produce_answer (with citation retry) -> final/refusal`
+- Answer flow: `classify → rewrite_query → retrieve → assess_retrieval → produce_answer` (low confidence triggers `rewrite_query_retry`)
 - LangGraph is used when installed, with a sequential fallback for constrained environments
 - Golden-set evaluation (20 questions) and automated tests pass in CI
 
@@ -40,7 +40,7 @@ GitHub Actions runs `python run_tests.py` on push and pull requests (skips Gemin
 - **Phase 2 (done)**: Full statute ingest, cross-law expansion, 20 golden questions, hybrid retrieval
   - Phase 2a baseline: `eval/baseline-phase2a.json` (12 questions, 5 full texts)
   - Phase 2b baseline: `eval/baseline-phase2b.json` (20 questions, 9 statutes, track E cross-law)
-- **Phase 3 (next)**: Low-score retrieval refusal, external write-ups (blog / wiki); retrieval hints removed in favor of LLM query rewrite
+- **Phase 3 (in progress)**: Low-score retrieval refusal with rewrite retry loop, external write-ups (blog / wiki)
 
 Details: [Phase 2 corpus expansion plan](docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md) · Traditional Chinese: [readme-tw.md](readme-tw.md#路線圖)
 
@@ -126,8 +126,12 @@ flowchart TD
     Q[User question] --> C[classify]
     C -->|case-specific penalty / compensation / news figures| R[refuse]
     C -->|otherwise| RQ[rewrite_query]
-    RQ --> RET[retrieve top-k chunks]
-    RET --> PA[produce_answer]
+    RQ --> RET[retrieve]
+    RET --> AR[assess_retrieval]
+    AR -->|confidence OK| PA[produce_answer]
+    AR -->|low & retries left| RQR[rewrite_query_retry]
+    RQR --> RET
+    AR -->|low & no retries| RL[refuse low_retrieval]
     PA --> G[generate with system prompt + context]
     G --> CH[citation_check]
     CH -->|citations grounded in retrieved chunks| OUT[final answer]
@@ -141,12 +145,14 @@ flowchart TD
 | Step | Module | Behavior |
 |------|--------|----------|
 | **classify** | `citations.should_refuse_question` | Rule-based gate for penalty amounts, compensation, criminal liability, unstable figures |
-| **rewrite_query** | `agent.FinRagAgent` | LLM rewrites the user question into a retrieval-optimized query (statute names, expanded terms) |
+| **rewrite_query** | `agent.FinRagAgent` | LLM rewrites the user question into retrieval queries (corpus catalog aware) |
+| **assess_retrieval** | `retrieval_assess` | Max fused RRF score vs `FIN_RAG_MIN_RETRIEVAL_SCORE` |
+| **rewrite_query_retry** | `agent.FinRagAgent` | Second-pass LLM rewrite when confidence is low (uses prior queries + weak hits) |
 | **retrieve** | `retrieve.Retriever` | Hybrid (BM25 + FAISS/embedding, RRF) or vector-only; top-k from fused ranking |
 | **produce_answer** | `agent.FinRagAgent` | Generate → citation check → one retry on failure, then refuse |
 | **generate** | `gemini.GeminiClient` | System prompt (`prompts/system.md`) + retrieved excerpts → Traditional Chinese answer |
 | **citation_check** | `citations.citation_hit` | Parse `doc_id 第 N 條` (including `第 14-2 條`); must match retrieved chunks |
-| **refuse** | `agent.REFUSAL` | Fixed disclaimer; `refused=true`, `citation_hit=false` |
+| **refuse** | `agent.FinRagAgent` | Policy / low-retrieval / citation refusal messages |
 
 ### Evaluation loop
 
@@ -180,6 +186,8 @@ FIN_RAG_GENERATION_MODEL=gemini-2.5-flash
 FIN_RAG_EMBEDDING_MODEL=gemini-embedding-2
 FIN_RAG_RETRIEVAL_MODE=hybrid
 FIN_RAG_VECTOR_BACKEND=auto
+FIN_RAG_MIN_RETRIEVAL_SCORE=0.028
+FIN_RAG_MAX_RETRIEVAL_ROUNDS=1
 ```
 
 | Variable | Default | Values | Purpose |
@@ -189,6 +197,8 @@ FIN_RAG_VECTOR_BACKEND=auto
 | `FIN_RAG_EMBEDDING_MODEL` | `gemini-embedding-2` | Gemini model id | Query and index embeddings |
 | `FIN_RAG_RETRIEVAL_MODE` | `hybrid` | `hybrid`, `embedding` | BM25 + vector RRF, or vector-only |
 | `FIN_RAG_VECTOR_BACKEND` | `auto` | `auto`, `faiss`, `jsonl` | Use FAISS index, JSONL scan, or auto-prefer FAISS |
+| `FIN_RAG_MIN_RETRIEVAL_SCORE` | `0.028` | float | Max fused RRF score gate; below → retry or refuse |
+| `FIN_RAG_MAX_RETRIEVAL_ROUNDS` | `1` | int | Extra rewrite+retrieve rounds when confidence is low |
 
 Install dependencies with your preferred environment manager, then run the commands below from the repo root.
 

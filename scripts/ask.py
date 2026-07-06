@@ -125,6 +125,8 @@ def main() -> int:
         client=client,
         retrieve=retriever.retrieve,
         retrieve_queries=retriever.retrieve_queries,
+        min_retrieval_score=settings.min_retrieval_score,
+        max_retrieval_rounds=settings.max_retrieval_rounds,
     )
     result = agent.answer(question)
     if json_output:

@@ -33,6 +33,8 @@ def main() -> int:
         client=client,
         retrieve=retriever.retrieve,
         retrieve_queries=retriever.retrieve_queries,
+        min_retrieval_score=settings.min_retrieval_score,
+        max_retrieval_rounds=settings.max_retrieval_rounds,
     )
     report = run_eval(
         agent,

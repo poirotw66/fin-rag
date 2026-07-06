@@ -1,6 +1,7 @@
 import unittest
 
-from fin_rag.agent import FinRagAgent
+from fin_rag.agent import FinRagAgent, REFUSAL_LOW_RETRIEVAL
+from fin_rag.types import Chunk, RetrievedChunk
 
 
 class QueryRewriteTests(unittest.TestCase):
@@ -40,6 +41,49 @@ class QueryRewriteTests(unittest.TestCase):
         agent = FinRagAgent(client=FakeClient(), retrieve=lambda _: [])
         question = "什麼是風險基礎方法？"
         self.assertEqual(agent._rewrite_for_retrieval(question), [question])
+
+    def test_assess_retrieval_refuses_when_score_below_threshold_and_no_retries_left(self) -> None:
+        chunk = Chunk(
+            doc_id="aml-finst",
+            title="aml-finst",
+            article="第 2 條",
+            text="text",
+            track="test",
+            source_url="https://example.test",
+            revision_date="113-01-01",
+        )
+
+        class FakeClient:
+            def generate(self, prompt: str) -> str:
+                return "洗錢防制"
+
+            def embed(self, text: str) -> list[float]:
+                return [1.0]
+
+        agent = FinRagAgent(
+            client=FakeClient(),
+            retrieve=lambda _: [],
+            retrieve_queries=lambda _: [RetrievedChunk(chunk, 0.01)],
+            min_retrieval_score=0.028,
+            max_retrieval_rounds=0,
+        )
+        state = {
+            "question": "什麼是風險基礎方法？",
+            "retrieval_round": 0,
+            "retrieved": [RetrievedChunk(chunk, 0.01)],
+        }
+        state = agent._assess_retrieval_node(state)
+
+        self.assertFalse(state["retrieval_sufficient"])
+        self.assertEqual(state["refusal_reason"], "low_retrieval")
+        self.assertEqual(agent._route_after_assess(state), "refuse")
+
+    def test_refuse_node_uses_low_retrieval_message(self) -> None:
+        agent = FinRagAgent(client=type("C", (), {"generate": lambda *_: ""})(), retrieve=lambda _: [])
+        state = agent._refuse_node({"refusal_reason": "low_retrieval"})
+
+        self.assertEqual(state["answer"], REFUSAL_LOW_RETRIEVAL)
+        self.assertTrue(state["refused"])
 
 
 if __name__ == "__main__":
