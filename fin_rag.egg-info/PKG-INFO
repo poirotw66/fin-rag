@@ -4,6 +4,7 @@ Version: 0.1.0
 Summary: CLI-first public financial regulation Agentic RAG MVP.
 Requires-Python: >=3.11
 Requires-Dist: beautifulsoup4>=4.12
+Requires-Dist: faiss-cpu>=1.8
 Requires-Dist: fastapi>=0.115
 Requires-Dist: google-genai>=1.0
 Requires-Dist: httpx>=0.28

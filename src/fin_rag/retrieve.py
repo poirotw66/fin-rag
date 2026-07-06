@@ -1,9 +1,69 @@
 from __future__ import annotations
 
-from .bm25 import BM25Index
+from .bm25 import BM25Index, read_bm25_index
 from .gemini import GeminiClient
 from .types import Chunk, RetrievedChunk
-from .vector_store import VectorRecord, hybrid_search, read_index, search
+from .vector_store import (
+    LoadedIndex,
+    bm25_path_for,
+    chunk_search_text,
+    hybrid_search_loaded_index,
+    load_index_bundle,
+    rank_loaded_index,
+)
+
+
+class Retriever:
+    def __init__(
+        self,
+        *,
+        client: GeminiClient,
+        index_path: str,
+        top_k: int = 12,
+        retrieval_mode: str = "hybrid",
+        vector_backend: str = "auto",
+        rrf_k: int = 60,
+    ):
+        self.client = client
+        self.index_path = index_path
+        self.top_k = top_k
+        self.retrieval_mode = retrieval_mode
+        self.vector_backend = vector_backend
+        self.rrf_k = rrf_k
+        self._bundle: LoadedIndex | None = None
+        self._bm25_index: BM25Index | None = None
+
+    def retrieve(self, question: str) -> list[RetrievedChunk]:
+        bundle = self._load_bundle()
+        query_embedding = self.client.embed(question)
+        if self.retrieval_mode == "embedding":
+            ranked = rank_loaded_index(bundle, query_embedding)
+        else:
+            ranked = hybrid_search_loaded_index(
+                bundle,
+                query_embedding,
+                question,
+                len(bundle.chunks),
+                bm25_index=self._load_bm25_index(bundle.chunks),
+                rrf_k=self.rrf_k,
+            )
+        return _apply_retrieval_hints(question, ranked, self.top_k)
+
+    def _load_bundle(self) -> LoadedIndex:
+        if self._bundle is None:
+            self._bundle = load_index_bundle(self.index_path, backend=self.vector_backend)
+        return self._bundle
+
+    def _load_bm25_index(self, chunks: list[Chunk]) -> BM25Index:
+        if self._bm25_index is None:
+            bm25_path = bm25_path_for(self.index_path)
+            if bm25_path.exists():
+                self._bm25_index = read_bm25_index(bm25_path)
+                if len(self._bm25_index.corpus) != len(chunks):
+                    raise ValueError("BM25 index size does not match loaded chunks")
+            else:
+                self._bm25_index = BM25Index.build([chunk_search_text(chunk) for chunk in chunks])
+        return self._bm25_index
 
 
 TITLE_DOC_HINTS: tuple[tuple[str, str], ...] = (
@@ -16,56 +76,6 @@ TITLE_DOC_HINTS: tuple[tuple[str, str], ...] = (
     ("證券投資信託及顧問法", "sit-trust-act"),
     ("重大偶發事件", "sit-material-event"),
 )
-
-
-class Retriever:
-    def __init__(
-        self,
-        *,
-        client: GeminiClient,
-        index_path: str,
-        top_k: int = 12,
-        retrieval_mode: str = "hybrid",
-        rrf_k: int = 60,
-    ):
-        self.client = client
-        self.index_path = index_path
-        self.top_k = top_k
-        self.retrieval_mode = retrieval_mode
-        self.rrf_k = rrf_k
-        self._records: list[VectorRecord] | None = None
-        self._bm25_index: BM25Index | None = None
-
-    def retrieve(self, question: str) -> list[RetrievedChunk]:
-        records = self._load_records()
-        query_embedding = self.client.embed(question)
-        if self.retrieval_mode == "embedding":
-            ranked = search(records, query_embedding, len(records))
-        else:
-            ranked = hybrid_search(
-                records,
-                query_embedding,
-                question,
-                len(records),
-                bm25_index=self._load_bm25_index(records),
-                rrf_k=self.rrf_k,
-            )
-        return _apply_retrieval_hints(question, ranked, self.top_k)
-
-    def _load_records(self) -> list[VectorRecord]:
-        if self._records is None:
-            self._records = read_index(self.index_path)
-        return self._records
-
-    def _load_bm25_index(self, records: list[VectorRecord]) -> BM25Index:
-        if self._bm25_index is None:
-            texts = [_chunk_search_text(record.chunk) for record in records]
-            self._bm25_index = BM25Index.build(texts)
-        return self._bm25_index
-
-
-def _chunk_search_text(chunk: Chunk) -> str:
-    return f"{chunk.title} {chunk.article} {chunk.text}"
 
 
 def _retrieval_hints(question: str) -> list[tuple[str, str | None]]:

@@ -54,7 +54,12 @@ python -m unittest tests.test_corpus_coverage -v
 python eval/run.py
 ```
 
-`build_index.py` reuses existing embeddings for unchanged chunks and only embeds new or updated articles.
+`build_index.py` reuses existing embeddings for unchanged chunks and only embeds new or updated articles. It writes:
+
+- `corpus/index.jsonl` — embedding cache for rebuilds
+- `corpus/index.faiss` — local FAISS vector index (runtime default when `FIN_RAG_VECTOR_BACKEND=auto`)
+- `corpus/index_meta.jsonl` — chunk metadata aligned with the FAISS rows
+- `corpus/index_bm25.json` — persisted BM25 lexicon (runtime loads this instead of rebuilding in memory)
 
 Save evaluation baselines when a batch is stable:
 

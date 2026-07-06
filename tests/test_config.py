@@ -10,6 +10,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.generation_model, "gemini-2.5-flash")
         self.assertEqual(settings.embedding_model, "gemini-embedding-2")
         self.assertEqual(settings.retrieval_mode, "hybrid")
+        self.assertEqual(settings.vector_backend, "auto")
 
     def test_settings_reads_api_key_and_model_overrides(self):
         settings = Settings.from_env(
@@ -26,9 +27,13 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.embedding_model, "custom-embedding")
         self.assertEqual(settings.retrieval_mode, "embedding")
 
-    def test_settings_rejects_unknown_retrieval_mode(self):
+    def test_settings_rejects_unknown_retrieval_mode(self) -> None:
         with self.assertRaises(ValueError):
             Settings.from_env({"FIN_RAG_RETRIEVAL_MODE": "bm25-only"})
+
+    def test_settings_rejects_unknown_vector_backend(self) -> None:
+        with self.assertRaises(ValueError):
+            Settings.from_env({"FIN_RAG_VECTOR_BACKEND": "pinecone"})
 
 
 if __name__ == "__main__":

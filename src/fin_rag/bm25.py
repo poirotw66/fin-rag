@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
 import math
 import re
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Mapping
 
 
 _TOKEN_RE = re.compile(r"[\u4e00-\u9fff]|[a-zA-Z0-9]+")
@@ -62,3 +65,42 @@ class BM25Index:
                     term_frequency * (self.k1 + 1.0)
                 ) / denominator
         return scores
+
+
+def bm25_index_to_json(index: BM25Index) -> dict[str, object]:
+    if index.doc_lens is None or index.idf is None:
+        raise ValueError("BM25 index is not prepared")
+    return {
+        "k1": index.k1,
+        "b": index.b,
+        "corpus": index.corpus,
+        "doc_lens": index.doc_lens,
+        "avgdl": index.avgdl,
+        "idf": index.idf,
+    }
+
+
+def bm25_index_from_json(data: Mapping[str, object]) -> BM25Index:
+    index = BM25Index(
+        corpus=[list(tokens) for tokens in data["corpus"]],  # type: ignore[arg-type]
+        k1=float(data["k1"]),  # type: ignore[arg-type]
+        b=float(data["b"]),  # type: ignore[arg-type]
+    )
+    index.doc_lens = [int(value) for value in data["doc_lens"]]  # type: ignore[arg-type]
+    index.avgdl = float(data["avgdl"])  # type: ignore[arg-type]
+    index.idf = {str(key): float(value) for key, value in data["idf"].items()}  # type: ignore[arg-type]
+    return index
+
+
+def write_bm25_index(index: BM25Index, path: str | Path) -> None:
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(
+        json.dumps(bm25_index_to_json(index), ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def read_bm25_index(path: str | Path) -> BM25Index:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    return bm25_index_from_json(data)

@@ -12,6 +12,7 @@ class Settings:
     generation_model: str
     embedding_model: str
     retrieval_mode: str
+    vector_backend: str
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
@@ -21,11 +22,15 @@ class Settings:
         retrieval_mode = source.get("FIN_RAG_RETRIEVAL_MODE", "hybrid").strip().lower()
         if retrieval_mode not in {"hybrid", "embedding"}:
             raise ValueError("FIN_RAG_RETRIEVAL_MODE must be 'hybrid' or 'embedding'")
+        vector_backend = source.get("FIN_RAG_VECTOR_BACKEND", "auto").strip().lower()
+        if vector_backend not in {"auto", "faiss", "jsonl"}:
+            raise ValueError("FIN_RAG_VECTOR_BACKEND must be 'auto', 'faiss', or 'jsonl'")
         return cls(
             api_key=source.get("GEMINI_API_KEY"),
             generation_model=source.get("FIN_RAG_GENERATION_MODEL", "gemini-2.5-flash"),
             embedding_model=source.get("FIN_RAG_EMBEDDING_MODEL", "gemini-embedding-2"),
             retrieval_mode=retrieval_mode,
+            vector_backend=vector_backend,
         )
 
 

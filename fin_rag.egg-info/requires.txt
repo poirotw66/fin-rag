@@ -1,4 +1,5 @@
 beautifulsoup4>=4.12
+faiss-cpu>=1.8
 fastapi>=0.115
 google-genai>=1.0
 httpx>=0.28

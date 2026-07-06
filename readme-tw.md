@@ -14,7 +14,7 @@ Phase 2 baseline: `eval/baseline-phase2b.json`（9 份法規、20 題 golden、h
 
 - 公開法規 corpus 入庫與條文 chunk 已完成（目前 346 chunks、9 份法規，見 `python scripts/spot_check_corpus.py`）
 - Gemini embedding 與生成已接入執行流程
-- 檢索預設為 **hybrid**（BM25 + embedding，RRF 融合）；可設 `FIN_RAG_RETRIEVAL_MODE=embedding` 改回純向量
+- 檢索預設為 **hybrid**（BM25 + embedding，RRF 融合）；向量索引預設 **FAISS**（`corpus/index.faiss` + `index_meta.jsonl`，`auto` 時優先於 JSONL 全量掃描）
 - 問答流程：`classify → retrieve → produce_answer（含 citation 重試）→ 輸出／拒答`
 - 已安裝 LangGraph 時走圖流程；否則使用等價的循序 fallback
 - Golden set 20 題評估與自動化測試可通過
@@ -77,7 +77,7 @@ Fin RAG 分三層：**離線 corpus 管線**、**核心 agent 執行期**（`src
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  corpus/                                                        │
-│  manifest.json → raw/*.html → chunks.jsonl → index.jsonl         │
+│  manifest.json → raw/*.html → chunks.jsonl → index.faiss         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -96,8 +96,8 @@ manifest.json + raw/*.html
         ▼  chunk_by_article.py
   chunks.jsonl
         │
-        ▼  build_index.py（Gemini embeddings）
-   index.jsonl
+        ▼  build_index.py（Gemini embeddings + FAISS）
+   index.jsonl + index.faiss + index_meta.jsonl
 ```
 
 ### 線上問答流程
@@ -170,6 +170,7 @@ GEMINI_API_KEY=...
 FIN_RAG_GENERATION_MODEL=gemini-2.5-flash
 FIN_RAG_EMBEDDING_MODEL=gemini-embedding-2
 FIN_RAG_RETRIEVAL_MODE=hybrid
+FIN_RAG_VECTOR_BACKEND=auto
 ```
 
 建議安裝方式：

@@ -10,7 +10,7 @@ from fin_rag.config import Settings
 from fin_rag.corpus import read_chunks_jsonl
 from fin_rag.cli import configure_utf8_stdio
 from fin_rag.gemini import GeminiClient
-from fin_rag.vector_store import VectorRecord, read_index, write_index
+from fin_rag.vector_store import VectorRecord, read_index, write_bm25_bundle, write_faiss_bundle, write_index
 
 
 def main() -> int:
@@ -48,7 +48,11 @@ def main() -> int:
             )
         )
     write_index(records, index_path)
+    write_faiss_bundle(records, index_path)
+    write_bm25_bundle(records, index_path)
     print(f"wrote {len(records)} vectors ({reused} reused)")
+    print(f"wrote FAISS index at {index_path.parent / 'index.faiss'}")
+    print(f"wrote BM25 index at {index_path.parent / 'index_bm25.json'}")
     return 0
 
 

@@ -14,7 +14,7 @@ This repository is at a working MVP stage with **Phase 2 complete**.
 
 - Public-law corpus ingestion and chunking are in place (346 chunks, 9 statutes; `python scripts/spot_check_corpus.py`)
 - Gemini embeddings and generation are wired into the runtime flow
-- Retrieval defaults to **hybrid** (BM25 + embedding, RRF fusion); set `FIN_RAG_RETRIEVAL_MODE=embedding` for vector-only
+- Retrieval defaults to **hybrid** (BM25 + embedding, RRF fusion); vector search defaults to **FAISS** (`corpus/index.faiss` + `index_meta.jsonl`, preferred when `FIN_RAG_VECTOR_BACKEND=auto`)
 - Answer flow: `classify -> retrieve -> produce_answer (with citation retry) -> final/refusal`
 - LangGraph is used when installed, with a sequential fallback for constrained environments
 - Golden-set evaluation (20 questions) and automated tests pass in CI
@@ -77,7 +77,7 @@ Fin RAG is split into three layers: an **offline corpus pipeline**, a **core age
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  corpus/                                                        │
-│  manifest.json → raw/*.html → chunks.jsonl → index.jsonl        │
+│  manifest.json → raw/*.html → chunks.jsonl → index.faiss        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -88,7 +88,7 @@ Run once (or again after source law updates):
 1. **Manifest** — `corpus/manifest.json` lists each public law document (`doc_id`, title, source URL, track, revision date).
 2. **Raw sources** — HTML/text under `corpus/raw/` from MOJ / FSC public sites.
 3. **Chunking** — `scripts/chunk_by_article.py` parses `第 N 條` boundaries and writes `corpus/chunks.jsonl` (one chunk per article, with `doc_id`, `article`, `text`, `track`).
-4. **Indexing** — `scripts/build_index.py` embeds each chunk with Gemini and writes `corpus/index.jsonl` (chunk metadata + embedding vector).
+4. **Indexing** — `scripts/build_index.py` embeds each chunk with Gemini and writes `corpus/index.jsonl` (embedding cache), `corpus/index.faiss`, and `corpus/index_meta.jsonl`.
 
 ```text
 manifest.json + raw/*.html
@@ -96,8 +96,8 @@ manifest.json + raw/*.html
         ▼  chunk_by_article.py
   chunks.jsonl
         │
-        ▼  build_index.py  (Gemini embeddings)
-   index.jsonl
+        ▼  build_index.py  (Gemini embeddings + FAISS)
+   index.jsonl + index.faiss + index_meta.jsonl
 ```
 
 ### Online Q&A flow
@@ -169,6 +169,7 @@ GEMINI_API_KEY=...
 FIN_RAG_GENERATION_MODEL=gemini-2.5-flash
 FIN_RAG_EMBEDDING_MODEL=gemini-embedding-2
 FIN_RAG_RETRIEVAL_MODE=hybrid
+FIN_RAG_VECTOR_BACKEND=auto
 ```
 
 Install dependencies with your preferred environment manager, then run the commands below from the repo root.
