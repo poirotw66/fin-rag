@@ -31,7 +31,10 @@ REFUSAL_MESSAGES = {
     "citation": REFUSAL_POLICY,
 }
 
-MAX_GENERATION_ATTEMPTS = 3
+MAX_POLICY_MISREFUSAL_RETRIES = 4
+MAX_CITATION_RETRIES = 3
+
+COMPARISON_QUESTION_MARKERS = ("有何不同", "差異", "比較", "區別", "對照")
 
 
 @dataclass(frozen=True)
@@ -133,25 +136,34 @@ class FinRagAgent:
         return "refuse"
 
     def _route_after_generate(self, state: dict[str, Any]) -> str:
-        attempt = state.get("generation_attempt", 0)
-        if (
-            not state.get("refuse_now")
-            and looks_like_policy_refusal(state["answer"])
-            and attempt < MAX_GENERATION_ATTEMPTS
-        ):
-            state["generation_retry_note"] = self._build_generation_retry_note(state)
+        if self._should_retry_policy_misrefusal(state):
+            self._prepare_policy_misrefusal_retry(state)
             return "generate"
         return "citation_check"
 
     def _route_after_citation(self, state: dict[str, Any]) -> str:
         if state["citation_hit"]:
             return "done"
-        attempt = state.get("generation_attempt", 0)
-        if attempt < MAX_GENERATION_ATTEMPTS:
+        if self._should_retry_policy_misrefusal(state):
+            self._prepare_policy_misrefusal_retry(state)
+            return "generate"
+        state["citation_retry_count"] = state.get("citation_retry_count", 0) + 1
+        if state["citation_retry_count"] < MAX_CITATION_RETRIES:
             state["generation_retry_note"] = self._build_generation_retry_note(state)
             return "generate"
         state["refusal_reason"] = "citation"
         return "refuse"
+
+    def _should_retry_policy_misrefusal(self, state: dict[str, Any]) -> bool:
+        if state.get("refuse_now"):
+            return False
+        if not looks_like_policy_refusal(state.get("answer", "")):
+            return False
+        return state.get("policy_misrefusal_count", 0) < MAX_POLICY_MISREFUSAL_RETRIES
+
+    def _prepare_policy_misrefusal_retry(self, state: dict[str, Any]) -> None:
+        state["policy_misrefusal_count"] = state.get("policy_misrefusal_count", 0) + 1
+        state["generation_retry_note"] = self._build_generation_retry_note(state)
 
     def _classify_node(self, state: dict[str, Any]) -> dict[str, Any]:
         state["refuse_now"] = should_refuse_question(state["question"])
@@ -165,6 +177,8 @@ class FinRagAgent:
         state.setdefault("answer", "")
         state.setdefault("generation_attempt", 0)
         state.setdefault("generation_retry_note", "")
+        state.setdefault("policy_misrefusal_count", 0)
+        state.setdefault("citation_retry_count", 0)
         return state
 
     def _rewrite_query_node(self, state: dict[str, Any]) -> dict[str, Any]:
@@ -250,10 +264,16 @@ class FinRagAgent:
 
     def _build_generation_retry_note(self, state: dict[str, Any]) -> str:
         if looks_like_policy_refusal(state.get("answer", "")):
-            return (
+            note = (
                 "\n\n上一輪誤判為拒答。此為一般法規問題（比較、程序、定義或個資蒐集要件），"
                 "請依檢索片段回答，且每個事實句附上（doc_id 第 N 條）。"
             )
+            if _is_comparison_question(state.get("question", "")):
+                note += (
+                    "此題要求比較不同制度或產品（如全委帳戶與基金）之規範差異，"
+                    "請分項對照並引用各對應條文，不可拒答。"
+                )
+            return note
         return (
             "\n\n上一輪回答未通過引用檢查。"
             "請務必在每個法規事實句附上（doc_id 第 N 條），且 doc_id 與條號必須來自上方可用引用清單或片段。"
@@ -303,6 +323,10 @@ class _SequentialGraph:
             state["refusal_reason"] = "citation"
             return self.agent._refuse_node(state)
         return state
+
+
+def _is_comparison_question(question: str) -> bool:
+    return any(marker in question for marker in COMPARISON_QUESTION_MARKERS)
 
 
 def _read_system_prompt(path: str | Path | None) -> str:

@@ -89,23 +89,42 @@ class QueryRewriteTests(unittest.TestCase):
         agent = FinRagAgent(client=type("C", (), {"generate": lambda *_: ""})(), retrieve=lambda _: [])
         state = {
             "citation_hit": False,
-            "generation_attempt": 1,
+            "citation_retry_count": 0,
             "answer": "missing citation",
         }
 
         self.assertEqual(agent._route_after_citation(state), "generate")
+        self.assertEqual(state["citation_retry_count"], 1)
         self.assertIn("上一輪回答未通過引用檢查", state["generation_retry_note"])
 
     def test_route_after_citation_refuses_after_max_attempts(self) -> None:
         agent = FinRagAgent(client=type("C", (), {"generate": lambda *_: ""})(), retrieve=lambda _: [])
         state = {
             "citation_hit": False,
-            "generation_attempt": 3,
+            "citation_retry_count": 2,
             "answer": "still missing citation",
         }
 
         self.assertEqual(agent._route_after_citation(state), "refuse")
         self.assertEqual(state["refusal_reason"], "citation")
+
+    def test_route_after_citation_retries_policy_misrefusal_without_citation_budget(self) -> None:
+        agent = FinRagAgent(client=type("C", (), {"generate": lambda *_: ""})(), retrieve=lambda _: [])
+        policy_answer = (
+            "我不能判斷特定個案的裁罰金額、賠償責任或刑事責任。"
+            "以下回答僅能依公開法規提供一般程序與條文方向，且不構成法律意見。"
+        )
+        state = {
+            "question": "全委帳戶與基金對利害關係人交易限制有何不同？",
+            "citation_hit": False,
+            "citation_retry_count": 2,
+            "policy_misrefusal_count": 0,
+            "answer": policy_answer,
+        }
+
+        self.assertEqual(agent._route_after_citation(state), "generate")
+        self.assertEqual(state["policy_misrefusal_count"], 1)
+        self.assertIn("不可拒答", state["generation_retry_note"])
 
 
 if __name__ == "__main__":
