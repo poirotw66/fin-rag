@@ -44,6 +44,7 @@ class CitationTests(unittest.TestCase):
     def test_should_refuse_case_specific_penalty_questions(self):
         self.assertTrue(should_refuse_question("國泰投信會被罰多少？"))
         self.assertTrue(should_refuse_question("全委帳戶 4.54 億損失由誰賠？"))
+        self.assertTrue(should_refuse_question("客戶說我們說明書寫錯，要賠多少？"))
         self.assertFalse(should_refuse_question("CDD 要做哪些事？"))
 
     def test_looks_like_policy_refusal_detects_standard_disclaimer(self) -> None:

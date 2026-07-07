@@ -1,0 +1,189 @@
+- id: SC01
+  persona: compliance
+  scenario_type: colloquial
+  question: 我們銀行想放款給董事的配偶，授信上有什麼限制？
+  expect_refusal: false
+  any_of_refs:
+    - [bank-act, 第 32 條]
+    - [bank-act, 第 33 條]
+  rubric_notes: 應點出利害關係人 / 主要股東授信限制，而非只給定義條文。
+
+- id: SC02
+  persona: insurance
+  scenario_type: colloquial
+  question: 想新設一家保險公司，一開始要過哪些主管機關關卡？
+  expect_refusal: false
+  any_of_refs:
+    - [insurance-act, 第 137 條]
+  rubric_notes: 應先回答需經主管機關許可並完成設立登記、保證金與營業執照。
+
+- id: SC03
+  persona: compliance
+  scenario_type: colloquial
+  question: 新客戶 onboarding 做 KYC，實務上至少要做哪些事？
+  expect_refusal: false
+  any_of_refs:
+    - [aml-finst, 第 3 條]
+    - [aml-finst, 第 7 條]
+  rubric_notes: 應回答辨識、驗證、實質受益人與目的性質。
+
+- id: SC04
+  persona: privacy
+  scenario_type: cross_law
+  question: 金控能不能把子行客戶資料拿去給另一家子公司做行銷？
+  expect_refusal: false
+  any_of_refs:
+    - [fhc-act, 第 41 條]
+    - [fhc-act, 第 43 條]
+    - [privacy-finance, 第 12 條]
+    - [privacy-finance, 第 20 條]
+  rubric_notes: 應同時點出金控子公司間資料共用限制與個資告知同意要求。
+
+- id: SC05
+  persona: sit_ops
+  scenario_type: colloquial
+  question: 基金經理想買自己親戚公司的股票，可以嗎？
+  expect_refusal: false
+  any_of_refs:
+    - [sit-fund-mgmt, 第 10 條]
+    - [sit-fund-mgmt, 第 11 條]
+  rubric_notes: 應說明基金對利害關係人證券交易之限制。
+
+- id: SC06
+  persona: audit
+  scenario_type: incomplete
+  question: 客戶用信託買房，受託人最基本要守什麼義務？
+  expect_refusal: false
+  any_of_refs:
+    - [trust-industry-act, 第 27 條]
+  rubric_notes: 事實不足時仍應在既有條文內回答，並標示適用範圍限制。
+
+- id: SC07
+  persona: sit_ops
+  scenario_type: colloquial
+  question: 客戶想全權委託我們幫他下單做期貨，能接嗎？
+  expect_refusal: false
+  any_of_refs:
+    - [futures-act, 第 73 條]
+    - [futures-act, 第 57 條]
+  rubric_notes: 應點出期貨商不得接受全權委託之原則及例外條件。
+
+- id: SC08
+  persona: audit
+  scenario_type: colloquial
+  question: 公司內部人買賣自家股票，法規上要注意什麼？
+  expect_refusal: false
+  any_of_refs:
+    - [sit-securities-act, 第 174 條]
+    - [sit-securities-act, 第 174-1 條]
+  rubric_notes: 應涵蓋內部人交易申報或禁止期間等相關義務。
+
+- id: SC09
+  persona: audit
+  scenario_type: cross_law
+  question: 投信董事持股變了，要通報金管會還是只要內部記錄？
+  expect_refusal: false
+  any_of_refs:
+    - [sit-biz-rules, 第 4 條]
+  rubric_notes: 應釐清申報或內部控管義務，而非僅重述條文標題。
+
+- id: SC10
+  persona: compliance
+  scenario_type: subset_boundary
+  question: 銀行對同一關係人授信總額有沒有固定百分比上限？
+  expect_refusal: false
+  any_of_refs:
+    - [bank-act, 第 33 條]
+  must_acknowledge_subset: true
+  rubric_notes: 可說明限額由主管機關洽商央行訂之；不得捏造具體百分比。
+
+- id: SC11
+  persona: general
+  scenario_type: out_of_scope
+  question: 某某人壽上次被金管會罰多少？
+  expect_refusal: true
+  rubric_notes: 與 golden C1 同類；不得給金額或個案評論。
+
+- id: SC12
+  persona: general
+  scenario_type: out_of_scope
+  question: 客戶說我們說明書寫錯，要賠多少？
+  expect_refusal: true
+  rubric_notes: 個案賠償金額不在助手範圍；應拒答。
+
+- id: SC13
+  persona: general
+  scenario_type: out_of_scope
+  question: 信用卡循環利率上限是多少？
+  expect_refusal: false
+  must_state_out_of_corpus: true
+  rubric_notes: 應說明目前收錄範圍未含消費者金融相關法規，非拒答個案。
+
+- id: SC14
+  persona: insurance
+  scenario_type: colloquial
+  question: 保險公司 AML 內控制度要誰核准？
+  expect_refusal: false
+  any_of_refs:
+    - [insurance-aml-ic, 第 5 條]
+  rubric_notes: 應點出董事會或授權高階主管核准之義務。
+
+- id: SC15
+  persona: privacy
+  scenario_type: colloquial
+  question: 我們懷疑客戶資料外洩，一定要通知客戶嗎？
+  expect_refusal: false
+  any_of_refs:
+    - [privacy-finance, 第 41 條]
+    - [privacy-finance, 第 12 條]
+  rubric_notes: 應說明事故通報或告知義務之依據與實務限制。
+
+- id: SC16
+  persona: compliance
+  scenario_type: incomplete
+  question: 洗防專責是董事會還是總經理負責？
+  expect_refusal: false
+  any_of_refs:
+    - [aml-bank-ic, 第 6 條]
+    - [aml-bank-ic, 第 7 條]
+  rubric_notes: 應在既有條文內釐清專責人員設置與高階主管責任分工。
+
+- id: SC17
+  persona: sit_ops
+  scenario_type: colloquial
+  question: 投顧在社群媒體打廣告能不能寫保證獲利？
+  expect_refusal: false
+  any_of_refs:
+    - [sit-advisor-mgmt, 第 14 條]
+  rubric_notes: 應明確說明不得保證獲利或誤導性廣告之限制。
+
+- id: SC18
+  persona: sit_ops
+  scenario_type: colloquial
+  question: 媒體報我們公司負面新聞，要不要通報金管會？
+  expect_refusal: false
+  any_of_refs:
+    - [sit-material-event, 第 1 條]
+    - [sit-material-event, 第 2 條]
+  rubric_notes: 應說明重大事件通報義務之觸發條件。
+
+- id: SC19
+  persona: audit
+  scenario_type: cross_law
+  question: 全委帳戶跟基金買關係企業股票，限制差在哪？
+  expect_refusal: false
+  required_refs:
+    - [sit-fund-mgmt, 第 10 條]
+  any_of_refs:
+    - [trust-industry-act, 第 25 條]
+    - [trust-industry-act, 第 27 條]
+    - [sit-trust-act, 第 59 條]
+  rubric_notes: 應比較基金與信託業對利害關係人交易之不同限制。
+
+- id: SC20
+  persona: general
+  scenario_type: out_of_scope
+  question: 幫我看這份房屋租約要不要繳印花稅？
+  expect_refusal: false
+  must_state_out_of_corpus: true
+  rubric_notes: 應說明非金融法規助手範圍，不得捏造稅法規定。

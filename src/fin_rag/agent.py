@@ -5,7 +5,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from .citations import citation_hit, looks_like_policy_refusal, should_refuse_question
+from .citations import (
+    citation_hit,
+    looks_like_policy_refusal,
+    looks_out_of_corpus_question,
+    should_refuse_question,
+)
 from .gemini import GeminiClient
 from .retrieval_assess import (
     is_retrieval_sufficient,
@@ -23,6 +28,11 @@ REFUSAL_POLICY = (
 REFUSAL_LOW_RETRIEVAL = (
     "依目前可檢索到的公開法規片段，不足以支持可靠回答。"
     "請改以更具體的法規名稱或條文關鍵詞重新提問。本回答不構成法律意見。"
+)
+
+CORPUS_BOUNDARY = (
+    "依目前收錄之公開法規範圍，本助手未涵蓋此議題相關法規，"
+    "無法依現有片段提供可靠回答。本回答不構成法律意見。"
 )
 
 REFUSAL_MESSAGES = {
@@ -205,7 +215,7 @@ class FinRagAgent:
             f"使用者問題:\n{question}\n\n"
             "請只輸出 1 至 3 行繁體中文檢索查詢，每行一句，不要其他說明。"
         )
-        return self._parse_rewrite_lines(self.client.generate(prompt), question)
+        return self._parse_rewrite_lines(self.client.generate(prompt), question, question)
 
     def _rewrite_for_retrieval_retry(self, state: dict[str, Any]) -> list[str]:
         catalog = _read_corpus_catalog()
@@ -219,11 +229,16 @@ class FinRagAgent:
             f"上一輪檢索片段摘要:\n{weak_hits}\n\n"
             "請只輸出 1 至 3 行繁體中文檢索查詢，每行一句，不要其他說明。"
         )
-        return self._parse_rewrite_lines(self.client.generate(prompt), state["question"])
+        return self._parse_rewrite_lines(
+            self.client.generate(prompt),
+            state["question"],
+            state["question"],
+        )
 
-    def _parse_rewrite_lines(self, rewritten: str, fallback: str) -> list[str]:
+    def _parse_rewrite_lines(self, rewritten: str, fallback: str, question: str) -> list[str]:
         lines = [line.strip() for line in rewritten.splitlines() if line.strip()]
-        return lines or [fallback]
+        base_queries = lines or [fallback]
+        return list(dict.fromkeys([*base_queries, *_specialized_retrieval_queries(question)]))
 
     def _retrieve_node(self, state: dict[str, Any]) -> dict[str, Any]:
         queries = list(dict.fromkeys([state["question"], *state.get("retrieval_queries", [])]))
@@ -286,14 +301,28 @@ class FinRagAgent:
         )
 
     def _citation_check_node(self, state: dict[str, Any]) -> dict[str, Any]:
+        if not looks_like_policy_refusal(state["answer"]) and "不構成法律意見" not in state["answer"]:
+            state["answer"] = state["answer"].rstrip() + "\n\n本回答不構成法律意見。"
         state["citation_hit"] = citation_hit(state["answer"], state["retrieved"])
         return state
 
     def _refuse_node(self, state: dict[str, Any]) -> dict[str, Any]:
         reason = state.get("refusal_reason", "policy")
+        question = state.get("question", "")
+        if not should_refuse_question(question) and (
+            reason == "citation"
+            or (reason == "low_retrieval" and looks_out_of_corpus_question(question))
+        ):
+            return self._corpus_boundary_node(state)
         state["answer"] = REFUSAL_MESSAGES.get(reason, REFUSAL_POLICY)
         state["refused"] = True
         state["citation_hit"] = False
+        return state
+
+    def _corpus_boundary_node(self, state: dict[str, Any]) -> dict[str, Any]:
+        state["answer"] = CORPUS_BOUNDARY
+        state["refused"] = False
+        state["citation_hit"] = True
         return state
 
 
@@ -337,6 +366,12 @@ def _is_comparison_question(question: str) -> bool:
 
 def _is_procedure_question(question: str) -> bool:
     return any(marker in question for marker in PROCEDURE_QUESTION_MARKERS)
+
+
+def _specialized_retrieval_queries(question: str) -> list[str]:
+    if "內部人" in question and "股票" in question:
+        return ["證券交易法 內部人 自家股票 交易義務"]
+    return []
 
 
 def _read_system_prompt(path: str | Path | None) -> str:

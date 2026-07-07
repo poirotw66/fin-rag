@@ -1,0 +1,139 @@
+- id: SC01
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "回答有先給結論與限制重點，雖補充推論較多但仍在授信限制範圍內。"
+
+- id: SC02
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "先列主管機關許可、設立登記、保證金與營業執照，結構清楚且可執行。"
+
+- id: SC03
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "以清單方式回答 KYC 最低要求，內容完整且可直接作為實務檢核項目。"
+
+- id: SC04
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "有先回答可以但須符合條件，並交代共同行銷與個資利用限制。"
+
+- id: SC05
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "有區分配偶與其他親屬是否落入法規範圍，結論實務上可用且標界誠實。"
+
+- id: SC06
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 0
+  weighted_pass: true
+  reviewer_notes: "雖有回答基本義務，但未明確提示題目事實不足及不動產信託適用範圍限制。"
+
+- id: SC07
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "先答原則上不能接，再指出主管機關例外，簡潔且可操作。"
+
+- id: SC08
+  r1_scope: 1
+  r3_usefulness: 0
+  r4_epistemic: 0
+  weighted_pass: false
+  reviewer_notes: "已拉回申報與責任主軸，但仍混入多項投信特定規則，未充分聚焦一般內部人交易義務。"
+
+- id: SC09
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "直接回答要通報而非只做內部紀錄，並補上通報途徑與期限。"
+
+- id: SC10
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "明確說明現有片段沒有固定百分比且不得自行補數字，標界表現合格。"
+
+- id: SC11
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "有正確拒答個案裁罰金額，範圍拿捏保守且未逾越助手能力。"
+
+- id: SC12
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "有正確拒答個案賠償金額，界線清楚且未提供不可靠判斷。"
+
+- id: SC13
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "清楚指出現有 corpus 未涵蓋信用卡利率議題，未捏造規則。"
+
+- id: SC14
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "直接回答應由董事會通過，簡短但足以支援實務判斷。"
+
+- id: SC15
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "已清楚區分懷疑與知悉，並補上通知義務與應變措施的實務限制。"
+
+- id: SC16
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "有把董事會最終責任與總經理督導責任分開說明，對資訊不足題型仍具實用性。"
+
+- id: SC17
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "先答不得保證獲利，結論明確且符合社群廣告實務需求。"
+
+- id: SC18
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "有交代觸發條件是足以影響信譽或營運，回答直接且可作通報判準。"
+
+- id: SC19
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "有做基金與全委帳戶的差異比較，並誠實說明現有片段對全委並無同等明文禁令。"
+
+- id: SC20
+  r1_scope: 1
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "有清楚劃出非金融法規 corpus 範圍，未虛構印花稅規定。"
