@@ -4,9 +4,11 @@ This corpus is limited to public MOJ/FSC legal and regulatory text. Media report
 
 The MVP is not legal advice. Answers must cite retrieved public-law text and refuse case-specific penalties, compensation, criminal liability, or unstable news figures.
 
+**Coverage disclaimer:** This is not a complete Taiwan financial law database. Large statutes are ingested as curated article subsets; see `corpus/subsets.yaml`.
+
 ## Current Inventory
 
-Phase 2 ingests nine public government sources into article-level chunks:
+Phase 4 ingests seventeen public government sources into article-level chunks:
 
 | doc_id | source | chunks (approx.) | track |
 |--------|--------|------------------|-------|
@@ -17,12 +19,18 @@ Phase 2 ingests nine public government sources into article-level chunks:
 | aml-bank-ic | MOJ G0380262 | 11 | aml |
 | aml-act | MOJ G0380131 | 58 | aml |
 | sit-trust-act | MOJ G0400121 | 102 | sit-related-party |
-| privacy-finance | MOJ I0050021 subset | 5 | cross-law |
+| privacy-finance | MOJ I0050021 subset | 7 | cross-law |
 | sit-securities-act | MOJ G0400001 subset | 4 | sit-related-party |
+| sit-advisor-mgmt | MOJ G0400077 | 39 | sit-advisory |
+| trust-industry-act | MOJ G0310027 subset | 4 | trust |
+| bank-act | MOJ G0380001 subset | 3 | banking |
+| insurance-aml-ic | MOJ G0390094 | 10 | aml-insurance |
+| fhc-act | MOJ G0380112 subset | 4 | holding |
+| futures-act | MOJ G0400100 subset | 3 | futures |
 
-Current total: `346` chunks in `corpus/chunks.jsonl`.
+Current total: `409` chunks in `corpus/chunks.jsonl`.
 
-Batch 2 subset definitions live in `corpus/subsets.yaml`. Full MOJ downloads are kept as `corpus/raw/{doc_id}.full.txt`; working chunk inputs are the extracted `corpus/raw/{doc_id}.txt` files.
+Subset definitions live in `corpus/subsets.yaml`. Full MOJ downloads are kept as `corpus/raw/{doc_id}.full.txt`; working chunk inputs are the extracted `corpus/raw/{doc_id}.txt` files.
 
 ## Ingest SOP
 
@@ -64,7 +72,7 @@ python eval/run.py
 Save evaluation baselines when a batch is stable:
 
 ```bash
-cp eval/last_report.json eval/baseline-phase2b.json
+cp eval/last_report.json eval/baseline-phase4.json
 ```
 
 ## Sources
@@ -84,3 +92,5 @@ Required articles for regression checks are listed in `corpus/spot_check.yaml`.
 | `eval/baseline-phase1.json` | 12 questions, excerpt corpus |
 | `eval/baseline-phase2a.json` | 12 questions, five full-text laws |
 | `eval/baseline-phase2b.json` | 20 questions, nine statutes (hybrid retrieval; all metrics 1.0) |
+| `eval/baseline-phase3.json` | 20 questions, retrieval confidence loop (all metrics 1.0) |
+| `eval/baseline-phase4.json` | 26 questions, seventeen statutes (all metrics 1.0) |

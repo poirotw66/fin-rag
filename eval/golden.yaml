@@ -125,6 +125,48 @@
     - [sit-securities-act, 第 14-3 條]
   expect_refusal: false
 
+- id: A8
+  track: A
+  question: 依銀行法，銀行法所稱銀行為何？
+  expected_refs:
+    - [bank-act, 第 2 條]
+  expect_refusal: false
+
+- id: A9
+  track: A
+  question: 保險業防制洗錢及打擊資恐內部控制制度應經何機關通過？
+  expected_refs:
+    - [insurance-aml-ic, 第 5 條]
+  expect_refusal: false
+
+- id: B8
+  track: B
+  question: 證券投資顧問事業從事廣告促銷不得有哪些行為？
+  expected_refs:
+    - [sit-advisor-mgmt, 第 14 條]
+  expect_refusal: false
+
+- id: B9
+  track: B
+  question: 信託業可經營哪些業務項目？
+  expected_refs:
+    - [trust-industry-act, 第 16 條]
+  expect_refusal: false
+
+- id: E5
+  track: E
+  question: 金融控股公司法所稱控制性持股為何？
+  expected_refs:
+    - [fhc-act, 第 4 條]
+  expect_refusal: false
+
+- id: E6
+  track: E
+  question: 期貨交易法所稱期貨交易包括哪些契約類型？
+  expected_refs:
+    - [futures-act, 第 3 條]
+  expect_refusal: false
+
 - id: C1
   track: C
   question: 國泰投信會被金管會罰多少錢？

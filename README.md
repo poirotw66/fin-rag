@@ -12,16 +12,19 @@ Phase 2 baseline: `eval/baseline-phase2b.json` (9 statutes, 20 golden questions,
 
 Phase 3 baseline: `eval/baseline-phase3.json` (20 golden questions, retrieval confidence loop + LLM query rewrite, all metrics 1.0)
 
-This repository is at a working MVP stage with **Phase 3c complete** (split LangGraph nodes + observability fields in API/CLI/Web).
+Phase 4 baseline: `eval/baseline-phase4.json` (17 statutes, 26 golden questions, all metrics 1.0)
 
-- Public-law corpus ingestion and chunking are in place (346 chunks, 9 statutes; `python scripts/spot_check_corpus.py`)
+This repository is at a working MVP stage with **Phase 4a/b complete** (multi-sector corpus: banking, insurance AML, trust, holding company, futures, advisory).
+
+- Public-law corpus ingestion and chunking are in place (**409 chunks, 17 statutes**; `python scripts/spot_check_corpus.py`)
+- **Coverage**: AML, securities investment trust/advisory, related-party governance, privacy/securities act excerpts, bank act excerpt, insurance AML internal control, trust industry act excerpt, financial holding company act excerpt, futures trading act excerpt. **Not a complete financial law database; not legal advice.**
 - Gemini embeddings and generation are wired into the runtime flow
 - Retrieval defaults to **hybrid** (BM25 + embedding, RRF fusion); vector search defaults to **FAISS** (`corpus/index.faiss` + `index_meta.jsonl`, preferred when `FIN_RAG_VECTOR_BACKEND=auto`); BM25 lexicon is persisted as `corpus/index_bm25.json` at build time
 - Answer flow: `classify → rewrite_query → retrieve → assess_retrieval → generate → citation_check` (low confidence triggers `rewrite_query_retry`; citation failures retry `generate` up to 3 times)
 - LangGraph is used when installed, with a sequential fallback for constrained environments
-- Golden-set evaluation (20 questions) and automated tests pass in CI
+- Golden-set evaluation (**26 questions**) and automated tests pass in CI
 
-Frozen benchmark (`eval/baseline-phase3.json`):
+Frozen benchmark (`eval/baseline-phase4.json`):
 
 - `citation_hit_rate`: 1.0
 - `refusal_accuracy`: 1.0
@@ -44,7 +47,9 @@ GitHub Actions runs `python run_tests.py` on push and pull requests (skips Gemin
   - Phase 2b baseline: `eval/baseline-phase2b.json` (20 questions, 9 statutes, track E cross-law)
 - **Phase 3a (done)**: Low-score retrieval refusal, `rewrite_query_retry` loop, LLM query rewrite (no hard-coded hints), parallel eval
   - Phase 3 baseline: `eval/baseline-phase3.json` (20 questions, all metrics 1.0)
-- **Phase 3c (done)**: Split `generate` / `citation_check` LangGraph nodes; expose `refusal_reason`, `retrieval_confidence`, `retrieval_round`, `generation_attempts` in API, CLI `--json`, and Web demo
+- **Phase 3c (done)**: Split `generate` / `citation_check` LangGraph nodes; observability fields in API, CLI `--json`, and Web demo
+- **Phase 4a/b (done)**: Corpus 9 → 17 statutes, chunks 346 → 409; added advisory rules, trust industry act, bank act, insurance AML IC, FHC act, futures act (large statutes ingested as subsets); golden 20 → 26 questions
+  - Phase 4 baseline: `eval/baseline-phase4.json` (26 questions, all metrics 1.0)
 - **Phase 3b (next)**: External write-ups (blog / wiki)
 
 Details: [Phase 2 corpus expansion plan](docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md) · Traditional Chinese: [readme-tw.md](readme-tw.md#路線圖)
@@ -163,7 +168,7 @@ flowchart TD
 
 ### Evaluation loop
 
-`eval/golden.yaml` holds **20 questions** (tracks A×7, B×7, E×4, C×2). `eval/run.py` runs the agent on each item and writes `eval/last_report.json` with `citation_hit_rate`, `refusal_accuracy`, and `expected_refs_retrieved_rate`. Requires a Gemini API key; CI does not run eval (cost and non-determinism).
+`eval/golden.yaml` holds **26 questions** (tracks A×9, B×9, E×6, C×2). `eval/run.py` runs the agent on each item and writes `eval/last_report.json` with `citation_hit_rate`, `refusal_accuracy`, and `expected_refs_retrieved_rate`. Requires a Gemini API key; CI does not run eval (cost and non-determinism).
 
 ## Project Layout
 

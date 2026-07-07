@@ -5,9 +5,11 @@ privacy-finance:
   articles:
     - "第 2 條"
     - "第 5 條"
+    - "第 6 條"
     - "第 19 條"
     - "第 20 條"
     - "第 20-1 條"
+    - "第 27 條"
 
 sit-securities-act:
   source_pcode: G0400001
@@ -18,3 +20,41 @@ sit-securities-act:
     - "第 14-3 條"
     - "第 14-5 條"
     - "第 26-3 條"
+
+bank-act:
+  source_pcode: G0380001
+  track: banking
+  title: 銀行法（銀行業務與授信節錄）
+  articles:
+    - "第 2 條"
+    - "第 3 條"
+    - "第 33 條"
+
+trust-industry-act:
+  source_pcode: G0310027
+  track: trust
+  title: 信託業法（信託業務節錄）
+  articles:
+    - "第 3 條"
+    - "第 16 條"
+    - "第 23 條"
+    - "第 38 條"
+
+fhc-act:
+  source_pcode: G0380112
+  track: holding
+  title: 金融控股公司法（組織與業務節錄）
+  articles:
+    - "第 4 條"
+    - "第 9 條"
+    - "第 36 條"
+    - "第 43 條"
+
+futures-act:
+  source_pcode: G0400100
+  track: futures
+  title: 期貨交易法（期貨交易與期貨商節錄）
+  articles:
+    - "第 3 條"
+    - "第 5 條"
+    - "第 56 條"

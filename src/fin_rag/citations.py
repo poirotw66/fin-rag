@@ -21,12 +21,18 @@ KNOWN_DOC_IDS = (
     "aml-act",
     "aml-bank-ic",
     "aml-finst",
+    "bank-act",
+    "fhc-act",
+    "futures-act",
+    "insurance-aml-ic",
     "privacy-finance",
+    "sit-advisor-mgmt",
     "sit-biz-rules",
     "sit-fund-mgmt",
     "sit-material-event",
     "sit-securities-act",
     "sit-trust-act",
+    "trust-industry-act",
 )
 
 ARTICLE_BODY = (

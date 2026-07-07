@@ -35,6 +35,7 @@ MAX_POLICY_MISREFUSAL_RETRIES = 4
 MAX_CITATION_RETRIES = 3
 
 COMPARISON_QUESTION_MARKERS = ("有何不同", "差異", "比較", "區別", "對照")
+PROCEDURE_QUESTION_MARKERS = ("CDD", "客戶身分確認", "身分確認", "申報", "保存")
 
 
 @dataclass(frozen=True)
@@ -273,6 +274,11 @@ class FinRagAgent:
                     "此題要求比較不同制度或產品（如全委帳戶與基金）之規範差異，"
                     "請分項對照並引用各對應條文，不可拒答。"
                 )
+            elif _is_procedure_question(state.get("question", "")):
+                note += (
+                    "此題為洗錢防制程序或客戶身分確認等一般法規義務問題，"
+                    "請依 aml-finst 等檢索片段回答，不可使用個案裁罰拒答模板。"
+                )
             return note
         return (
             "\n\n上一輪回答未通過引用檢查。"
@@ -327,6 +333,10 @@ class _SequentialGraph:
 
 def _is_comparison_question(question: str) -> bool:
     return any(marker in question for marker in COMPARISON_QUESTION_MARKERS)
+
+
+def _is_procedure_question(question: str) -> bool:
+    return any(marker in question for marker in PROCEDURE_QUESTION_MARKERS)
 
 
 def _read_system_prompt(path: str | Path | None) -> str:

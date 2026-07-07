@@ -82,7 +82,7 @@
     "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=I0050021",
     "issuer": "個人資料保護委員會",
     "revision_date": "114-11-11",
-    "fetched_at": "2026-07-04",
+    "fetched_at": "2026-07-07",
     "format": "txt",
     "chunk_strategy": "by_article",
     "track": "cross-law"
@@ -93,10 +93,76 @@
     "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0400001",
     "issuer": "金融監督管理委員會",
     "revision_date": "113-08-07",
-    "fetched_at": "2026-07-04",
+    "fetched_at": "2026-07-07",
     "format": "txt",
     "chunk_strategy": "by_article",
     "track": "sit-related-party"
+  },
+  {
+    "doc_id": "sit-advisor-mgmt",
+    "title": "證券投資顧問事業管理規則",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0400077",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "113-10-25",
+    "fetched_at": "2026-07-07",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "sit-advisory"
+  },
+  {
+    "doc_id": "trust-industry-act",
+    "title": "信託業法（信託業務節錄）",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0310027",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "107-01-31",
+    "fetched_at": "2026-07-07",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "trust"
+  },
+  {
+    "doc_id": "bank-act",
+    "title": "銀行法（銀行業務與授信節錄）",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0380001",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "114-01-22",
+    "fetched_at": "2026-07-07",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "banking"
+  },
+  {
+    "doc_id": "insurance-aml-ic",
+    "title": "保險公司與辦理簡易人壽保險業務之郵政機構及其他經金融監督管理委員會指定之金融機構防制洗錢及打擊資恐內部控制與稽核制度實施辦法",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0390094",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "110-12-14",
+    "fetched_at": "2026-07-07",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "aml-insurance"
+  },
+  {
+    "doc_id": "fhc-act",
+    "title": "金融控股公司法（組織與業務節錄）",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0380112",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "108-01-16",
+    "fetched_at": "2026-07-07",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "holding"
+  },
+  {
+    "doc_id": "futures-act",
+    "title": "期貨交易法（期貨交易與期貨商節錄）",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0400100",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "112-06-28",
+    "fetched_at": "2026-07-07",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "futures"
   }
 ]
 
