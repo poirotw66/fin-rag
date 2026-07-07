@@ -8,6 +8,7 @@ from .types import RetrievedChunk
 CASE_SPECIFIC_PATTERNS = [
     "會被罰多少",
     "罰多少",
+    "要賠多少",
     "誰賠",
     "賠償多少",
     "4.54 億",
@@ -55,6 +56,17 @@ PAREN_RE = re.compile(r"[（(]([^（）()]+)[）)]")
 
 def should_refuse_question(question: str) -> bool:
     return any(pattern in question for pattern in CASE_SPECIFIC_PATTERNS)
+
+
+OUT_OF_CORPUS_MARKERS = (
+    "信用卡",
+    "印花稅",
+    "租約",
+)
+
+
+def looks_out_of_corpus_question(question: str) -> bool:
+    return any(marker in question for marker in OUT_OF_CORPUS_MARKERS)
 
 
 POLICY_REFUSAL_MARKERS = (

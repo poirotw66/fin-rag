@@ -42,6 +42,20 @@ class QueryRewriteTests(unittest.TestCase):
         question = "什麼是風險基礎方法？"
         self.assertEqual(agent._rewrite_for_retrieval(question), [question])
 
+    def test_rewrite_adds_securities_insider_hint_for_insider_stock_question(self) -> None:
+        class FakeClient:
+            def generate(self, prompt: str) -> str:
+                return "公司 內部人 股票 交易"
+
+            def embed(self, text: str) -> list[float]:
+                return [1.0]
+
+        agent = FinRagAgent(client=FakeClient(), retrieve=lambda _: [])
+
+        queries = agent._rewrite_for_retrieval("公司內部人買賣自家股票，法規上要注意什麼？")
+
+        self.assertIn("證券交易法 內部人 自家股票 交易義務", queries)
+
     def test_assess_retrieval_refuses_when_score_below_threshold_and_no_retries_left(self) -> None:
         chunk = Chunk(
             doc_id="aml-finst",

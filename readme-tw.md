@@ -54,6 +54,7 @@ GitHub Actions 於 push/PR 執行 `python run_tests.py`（不含需 API key 的 
   - Phase 4 baseline: `eval/baseline-phase4.json`
 - **Phase 5（完成）**：六份子集加深 + 保險法節錄；chunks 409 → 475；golden 26 → 34 題
   - Phase 5 baseline: `eval/baseline-phase5.json`（34 題、三項指標 100%）
+- **Phase 6（完成）**：新增真實工作情境驗收評估，與 golden regression 分開追蹤
 - **Phase 3b（待辦）**：對外文章（blog / wiki）
 
 詳細計畫：`docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md`
@@ -173,6 +174,8 @@ flowchart TD
 ### 評估迴圈
 
 `eval/golden.yaml` 含 **34 題**（軌 A×11、B×11、E×10、C×2）。`eval/run.py` 逐題跑 agent，輸出 `eval/last_report.json`（`citation_hit_rate`、`refusal_accuracy`、`expected_refs_retrieved_rate`）。需 Gemini API key；CI 不跑 eval（成本與非決定性）。
+
+`eval/scenarios.yaml` 收錄真實工作情境驗收題（口語化問題、persona 標籤、rubric 備註）。`eval/run_scenarios.py` 與 golden regression 分開執行，供 Phase 6 驗收追蹤。
 
 ## 目錄結構
 

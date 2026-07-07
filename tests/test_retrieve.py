@@ -106,6 +106,69 @@ class MultiQueryRetrieveTests(unittest.TestCase):
         self.assertEqual(results[0].chunk.article, "第 7 條")
         self.assertEqual(results[1].chunk.article, "第 12 條")
 
+    def test_retrieve_queries_prioritizes_securities_act_for_insider_stock_hint(self) -> None:
+        from fin_rag.retrieve import Retriever
+
+        securities_chunk = _chunk("sit-securities-act", "第 174 條", "內部人 自家股票")
+        trust_chunk = _chunk("sit-trust-act", "第 77 條", "基金經理人 股票 交易限制")
+
+        retriever = Retriever.__new__(Retriever)
+        retriever.top_k = 2
+        retriever.rrf_k = 60
+
+        def fake_retrieve(query: str) -> list[RetrievedChunk]:
+            if query == "證券交易法 內部人 自家股票 交易義務":
+                return [
+                    RetrievedChunk(chunk=securities_chunk, score=0.9),
+                    RetrievedChunk(chunk=trust_chunk, score=0.8),
+                ]
+            return [
+                RetrievedChunk(chunk=trust_chunk, score=0.9),
+                RetrievedChunk(chunk=securities_chunk, score=0.8),
+            ]
+
+        retriever.retrieve = fake_retrieve
+
+        results = retriever.retrieve_queries(
+            ["公司內部人買賣自家股票，法規上要注意什麼？", "證券交易法 內部人 自家股票 交易義務"]
+        )
+
+        self.assertEqual(results[0].chunk.doc_id, "sit-securities-act")
+        self.assertEqual(results[1].chunk.doc_id, "sit-trust-act")
+
+    def test_retrieve_queries_prioritizes_reporting_and_penalty_articles_for_insider_stock_hint(self) -> None:
+        from fin_rag.retrieve import Retriever
+
+        procedure_chunk = _chunk("sit-securities-act", "第 14-5 條", "董事自身利害關係 董事會決議")
+        reporting_chunk = _chunk("sit-securities-act", "第 43-1 條", "公開發行公司 百分之五 申報 公告")
+        penalty_chunk = _chunk("sit-securities-act", "第 174 條", "董事 經理人 受僱人 虛偽記載 刑責")
+
+        retriever = Retriever.__new__(Retriever)
+        retriever.top_k = 3
+        retriever.rrf_k = 60
+
+        def fake_retrieve(query: str) -> list[RetrievedChunk]:
+            if query == "證券交易法 內部人 自家股票 交易義務":
+                return [
+                    RetrievedChunk(chunk=procedure_chunk, score=0.9),
+                    RetrievedChunk(chunk=reporting_chunk, score=0.8),
+                    RetrievedChunk(chunk=penalty_chunk, score=0.7),
+                ]
+            return [
+                RetrievedChunk(chunk=procedure_chunk, score=0.9),
+                RetrievedChunk(chunk=reporting_chunk, score=0.8),
+                RetrievedChunk(chunk=penalty_chunk, score=0.7),
+            ]
+
+        retriever.retrieve = fake_retrieve
+
+        results = retriever.retrieve_queries(
+            ["公司內部人買賣自家股票，法規上要注意什麼？", "證券交易法 內部人 自家股票 交易義務"]
+        )
+
+        self.assertEqual(results[0].chunk.article, "第 43-1 條")
+        self.assertEqual(results[1].chunk.article, "第 174 條")
+
 
 if __name__ == "__main__":
     unittest.main()

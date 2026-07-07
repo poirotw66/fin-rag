@@ -54,6 +54,7 @@ GitHub Actions runs `python run_tests.py` on push and pull requests (skips Gemin
   - Phase 4 baseline: `eval/baseline-phase4.json`
 - **Phase 5 (done)**: Deepened six subsets + insurance act excerpt; chunks 409 → 475; golden 26 → 34
   - Phase 5 baseline: `eval/baseline-phase5.json` (34 questions, all metrics 1.0)
+- **Phase 6 (done)**: Scenario-based acceptance eval for realistic workplace regulatory questions, separate from golden regression
 - **Phase 3b (next)**: External write-ups (blog / wiki)
 
 Details: [Phase 2 corpus expansion plan](docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md) · Traditional Chinese: [readme-tw.md](readme-tw.md#路線圖)
@@ -173,6 +174,8 @@ flowchart TD
 ### Evaluation loop
 
 `eval/golden.yaml` holds **34 questions** (tracks A×11, B×11, E×10, C×2). `eval/run.py` runs the agent on each item and writes `eval/last_report.json` with `citation_hit_rate`, `refusal_accuracy`, and `expected_refs_retrieved_rate`. Requires a Gemini API key; CI does not run eval (cost and non-determinism).
+
+`eval/scenarios.yaml` holds workplace-style acceptance scenarios (colloquial questions, persona tags, rubric notes). `eval/run_scenarios.py` runs them separately from golden regression for Phase 6 acceptance tracking.
 
 ## Project Layout
 
