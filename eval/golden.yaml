@@ -167,6 +167,62 @@
     - [futures-act, 第 3 條]
   expect_refusal: false
 
+- id: A10
+  track: A
+  question: 銀行對同一關係人授信餘額有何比例限制？
+  expected_refs:
+    - [bank-act, 第 32 條]
+  expect_refusal: false
+
+- id: A11
+  track: A
+  question: 保險業經營業務應經主管機關何種許可？
+  expected_refs:
+    - [insurance-act, 第 137 條]
+  expect_refusal: false
+
+- id: B10
+  track: B
+  question: 受託人辦理信託業務對委託人負何種義務？
+  expected_refs:
+    - [trust-industry-act, 第 27 條]
+  expect_refusal: false
+
+- id: B11
+  track: B
+  question: 期貨商受託從事期貨交易之業務範圍為何？
+  expected_refs:
+    - [futures-act, 第 57 條]
+  expect_refusal: false
+
+- id: E7
+  track: E
+  question: 非公務機關告知當事人個資利用情形有何義務？
+  expected_refs:
+    - [privacy-finance, 第 12 條]
+  expect_refusal: false
+
+- id: E8
+  track: E
+  question: 公開發行公司大股東持股變動應如何申報？
+  expected_refs:
+    - [sit-securities-act, 第 43 條]
+  expect_refusal: false
+
+- id: E9
+  track: E
+  question: 金融控股公司投資非金融事業之持股上限為何？
+  expected_refs:
+    - [fhc-act, 第 37 條]
+  expect_refusal: false
+
+- id: E10
+  track: E
+  question: 保險契約應記載哪些基本事項？
+  expected_refs:
+    - [insurance-act, 第 55 條]
+  expect_refusal: false
+
 - id: C1
   track: C
   question: 國泰投信會被金管會罰多少錢？

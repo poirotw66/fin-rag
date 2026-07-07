@@ -24,6 +24,7 @@ KNOWN_DOC_IDS = (
     "bank-act",
     "fhc-act",
     "futures-act",
+    "insurance-act",
     "insurance-aml-ic",
     "privacy-finance",
     "sit-advisor-mgmt",

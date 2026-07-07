@@ -12,19 +12,21 @@ Phase 2 baseline: `eval/baseline-phase2b.json`（9 份法規、20 題 golden、h
 
 Phase 3 baseline: `eval/baseline-phase3.json`（20 題 golden、檢索信心迴圈 + LLM query rewrite，三項指標 100%）
 
-Phase 4 baseline: `eval/baseline-phase4.json`（17 份法規、26 題 golden、三項指標 100%）
+Phase 4 baseline: `eval/baseline-phase4.json`（15 份法規、26 題 golden、三項指標 100%）
 
-本 repo 已達可運作的 MVP 階段，**Phase 4a/b 已收尾**（多業別 corpus 擴充：銀行／保險 AML／信託／金控／期貨／投顧）。
+Phase 5 baseline: `eval/baseline-phase5.json`（16 份法規、34 題 golden、三項指標 100%）
 
-- 公開法規 corpus 入庫與條文 chunk 已完成（目前 **409 chunks、17 份法規**，見 `python scripts/spot_check_corpus.py`）
-- **涵蓋範圍**：洗錢防制、證券投資信託／顧問、利害關係人與通報、個資／證交法節錄、銀行法節錄、保險 AML 內控、信託業法節錄、金融控股公司法節錄、期貨交易法節錄。**非完整金融法規資料庫，不構成法律意見。**
+本 repo 已達可運作的 MVP 階段，**Phase 5 已收尾**（子集加深 + 保險法節錄，朝多業別金融法規助手）。
+
+- 公開法規 corpus 入庫與條文 chunk 已完成（目前 **475 chunks、16 份法規**，見 `python scripts/spot_check_corpus.py`）
+- **涵蓋範圍**：洗錢防制、證券投資信託／顧問、利害關係人與通報、個資／證交法節錄（已加深）、銀行法／信託業法／金控法／期貨法節錄（已加深）、保險 AML 內控、**保險法節錄**。**多數大法為精選條文子集，非完整金融法規資料庫，不構成法律意見。**
 - Gemini embedding 與生成已接入執行流程
 - 檢索預設為 **hybrid**（BM25 + embedding，RRF 融合）；向量索引預設 **FAISS**（`corpus/index.faiss` + `index_meta.jsonl`，`auto` 時優先於 JSONL 全量掃描）；BM25 詞表於 build 時寫入 `corpus/index_bm25.json` 並於 runtime 載入
 - 問答流程：`classify → rewrite_query → retrieve → assess_retrieval → generate → citation_check`（信心不足時觸發 `rewrite_query_retry`；引用失敗時最多重試 `generate` 3 次）
 - 已安裝 LangGraph 時走圖流程；否則使用等價的循序 fallback
-- Golden set **26 題**評估與自動化測試可通過
+- Golden set **34 題**評估與自動化測試可通過
 
-最近一次驗證基準（`eval/baseline-phase4.json`）：
+最近一次驗證基準（`eval/baseline-phase5.json`）：
 
 - `citation_hit_rate`: 1.0
 - `refusal_accuracy`: 1.0
@@ -48,8 +50,10 @@ GitHub Actions 於 push/PR 執行 `python run_tests.py`（不含需 API key 的 
 - **Phase 3a（完成）**：檢索低分拒答 + `rewrite_query_retry` 迴圈、移除 hard-coded hints、並行 eval
   - Phase 3 baseline: `eval/baseline-phase3.json`（20 題、三項指標 100%）
 - **Phase 3c（完成）**：拆分 `generate` / `citation_check` LangGraph 節點；於 API、CLI `--json`、Web demo 暴露 observability 欄位
-- **Phase 4a/b（完成）**：corpus 9 → 17 份法規、chunks 346 → 409；新增投顧管理規則、信託業法、銀行法、保險 AML 內控、金控法、期貨法（大法以子集 ingest）；golden 20 → 26 題
-  - Phase 4 baseline: `eval/baseline-phase4.json`（26 題、三項指標 100%）
+- **Phase 4a/b（完成）**：corpus 9 → 15 份、chunks 346 → 409；新增投顧、信託、銀行、保險 AML 內控、金控、期貨子集；golden 20 → 26 題
+  - Phase 4 baseline: `eval/baseline-phase4.json`
+- **Phase 5（完成）**：六份子集加深 + 保險法節錄；chunks 409 → 475；golden 26 → 34 題
+  - Phase 5 baseline: `eval/baseline-phase5.json`（34 題、三項指標 100%）
 - **Phase 3b（待辦）**：對外文章（blog / wiki）
 
 詳細計畫：`docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md`
@@ -168,7 +172,7 @@ flowchart TD
 
 ### 評估迴圈
 
-`eval/golden.yaml` 含 **26 題**（軌 A×9、B×9、E×6、C×2）。`eval/run.py` 逐題跑 agent，輸出 `eval/last_report.json`（`citation_hit_rate`、`refusal_accuracy`、`expected_refs_retrieved_rate`）。需 Gemini API key；CI 不跑 eval（成本與非決定性）。
+`eval/golden.yaml` 含 **34 題**（軌 A×11、B×11、E×10、C×2）。`eval/run.py` 逐題跑 agent，輸出 `eval/last_report.json`（`citation_hit_rate`、`refusal_accuracy`、`expected_refs_retrieved_rate`）。需 Gemini API key；CI 不跑 eval（成本與非決定性）。
 
 ## 目錄結構
 
@@ -292,7 +296,7 @@ cd apps/web && npm install && npm run dev
 - 金融機構處理客戶個資應遵循何種原則？
 - 依證券交易法，獨立董事與公司間有何利害關係限制？
 
-完整 26 題見 `eval/golden.yaml`。
+完整 34 題見 `eval/golden.yaml`。
 
 ## Corpus 範圍
 

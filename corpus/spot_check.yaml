@@ -16,26 +16,31 @@ sit-trust-act:
   - "第 12 條"
 privacy-finance:
   - "第 5 條"
+  - "第 12 條"
   - "第 19 條"
-  - "第 27 條"
 sit-securities-act:
   - "第 14-2 條"
+  - "第 43 條"
   - "第 26-3 條"
 sit-advisor-mgmt:
   - "第 12 條"
   - "第 14 條"
 trust-industry-act:
   - "第 16 條"
-  - "第 23 條"
+  - "第 27 條"
 bank-act:
   - "第 2 條"
+  - "第 32 條"
   - "第 33 條"
 insurance-aml-ic:
   - "第 5 條"
   - "第 7 條"
 fhc-act:
   - "第 4 條"
-  - "第 43 條"
+  - "第 37 條"
 futures-act:
   - "第 3 條"
-  - "第 56 條"
+  - "第 57 條"
+insurance-act:
+  - "第 55 條"
+  - "第 137 條"

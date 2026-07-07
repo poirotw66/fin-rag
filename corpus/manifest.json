@@ -163,6 +163,17 @@
     "format": "txt",
     "chunk_strategy": "by_article",
     "track": "futures"
+  },
+  {
+    "doc_id": "insurance-act",
+    "title": "保險法（保險業與契約節錄）",
+    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=G0390002",
+    "issuer": "金融監督管理委員會",
+    "revision_date": "114-06-18",
+    "fetched_at": "2026-07-07",
+    "format": "txt",
+    "chunk_strategy": "by_article",
+    "track": "insurance"
   }
 ]
 

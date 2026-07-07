@@ -8,27 +8,28 @@ The MVP is not legal advice. Answers must cite retrieved public-law text and ref
 
 ## Current Inventory
 
-Phase 4 ingests seventeen public government sources into article-level chunks:
+Phase 5 ingests sixteen public government sources into article-level chunks:
 
 | doc_id | source | chunks (approx.) | track |
 |--------|--------|------------------|-------|
 | sit-fund-mgmt | MOJ G0400082 | 100 | sit-related-party |
 | sit-biz-rules | MOJ G0400078 | 47 | sit-related-party |
+| sit-trust-act | MOJ G0400121 | 129 | sit-related-party |
+| sit-advisor-mgmt | MOJ G0400077 | 37 | sit-advisory |
 | sit-material-event | FSC GL001531 | 3 | sit-reporting |
+| sit-securities-act | MOJ G0400001 subset | 12 | sit-related-party |
 | aml-finst | MOJ G0380252 | 16 | aml |
 | aml-bank-ic | MOJ G0380262 | 11 | aml |
-| aml-act | MOJ G0380131 | 58 | aml |
-| sit-trust-act | MOJ G0400121 | 102 | sit-related-party |
-| privacy-finance | MOJ I0050021 subset | 7 | cross-law |
-| sit-securities-act | MOJ G0400001 subset | 4 | sit-related-party |
-| sit-advisor-mgmt | MOJ G0400077 | 39 | sit-advisory |
-| trust-industry-act | MOJ G0310027 subset | 4 | trust |
-| bank-act | MOJ G0380001 subset | 3 | banking |
+| aml-act | MOJ G0380131 | 31 | aml |
 | insurance-aml-ic | MOJ G0390094 | 10 | aml-insurance |
-| fhc-act | MOJ G0380112 subset | 4 | holding |
-| futures-act | MOJ G0400100 subset | 3 | futures |
+| insurance-act | MOJ G0390002 subset | 10 | insurance |
+| privacy-finance | MOJ I0050021 subset | 15 | cross-law |
+| bank-act | MOJ G0380001 subset | 13 | banking |
+| trust-industry-act | MOJ G0310027 subset | 14 | trust |
+| fhc-act | MOJ G0380112 subset | 14 | holding |
+| futures-act | MOJ G0400100 subset | 13 | futures |
 
-Current total: `409` chunks in `corpus/chunks.jsonl`.
+Current total: `475` chunks in `corpus/chunks.jsonl`.
 
 Subset definitions live in `corpus/subsets.yaml`. Full MOJ downloads are kept as `corpus/raw/{doc_id}.full.txt`; working chunk inputs are the extracted `corpus/raw/{doc_id}.txt` files.
 
@@ -72,7 +73,7 @@ python eval/run.py
 Save evaluation baselines when a batch is stable:
 
 ```bash
-cp eval/last_report.json eval/baseline-phase4.json
+cp eval/last_report.json eval/baseline-phase5.json
 ```
 
 ## Sources
@@ -93,4 +94,5 @@ Required articles for regression checks are listed in `corpus/spot_check.yaml`.
 | `eval/baseline-phase2a.json` | 12 questions, five full-text laws |
 | `eval/baseline-phase2b.json` | 20 questions, nine statutes (hybrid retrieval; all metrics 1.0) |
 | `eval/baseline-phase3.json` | 20 questions, retrieval confidence loop (all metrics 1.0) |
-| `eval/baseline-phase4.json` | 26 questions, seventeen statutes (all metrics 1.0) |
+| `eval/baseline-phase4.json` | 26 questions, fifteen statutes (all metrics 1.0) |
+| `eval/baseline-phase5.json` | 34 questions, sixteen statutes (all metrics 1.0) |
