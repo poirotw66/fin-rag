@@ -38,9 +38,16 @@ class GeminiClient:
     def generate(self, prompt: str) -> str:
         sdk_client = self._sdk_client()
         if sdk_client is not None:
-            response = sdk_client.models.generate_content(model=self.generation_model, contents=prompt)
+            response = sdk_client.models.generate_content(
+                model=self.generation_model,
+                contents=prompt,
+                config={"temperature": 0},
+            )
             return (response.text or "").strip()
-        payload = {"contents": [{"parts": [{"text": prompt}]}]}
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0},
+        }
         data = self._post(
             f"https://generativelanguage.googleapis.com/v1beta/models/{self.generation_model}:generateContent?key={self.api_key}",
             payload,

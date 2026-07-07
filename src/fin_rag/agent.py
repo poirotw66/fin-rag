@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from .citations import citation_hit, should_refuse_question
+from .citations import citation_hit, looks_like_policy_refusal, should_refuse_question
 from .gemini import GeminiClient
 from .retrieval_assess import (
     is_retrieval_sufficient,
@@ -30,6 +30,8 @@ REFUSAL_MESSAGES = {
     "low_retrieval": REFUSAL_LOW_RETRIEVAL,
     "citation": REFUSAL_POLICY,
 }
+
+MAX_GENERATION_ATTEMPTS = 3
 
 
 @dataclass(frozen=True)
@@ -205,30 +207,43 @@ class FinRagAgent:
             f"[{item.chunk.doc_id} {item.chunk.article}] {item.chunk.title}: {item.chunk.text}"
             for item in state["retrieved"]
         )
-        retry_note = ""
-        if state.get("retry_generation"):
-            retry_note = (
-                "\n\n上一輪回答未通過引用檢查。"
-                "請務必在每個法規事實句附上（doc_id 第 N 條），且 doc_id 與條號必須來自上方片段。"
-            )
+        hints = _format_citation_hints(state["retrieved"])
+        retry_note = state.get("generation_retry_note", "")
         prompt = (
-            f"{self.system_prompt}\n\n公開法規片段:\n{context}\n\n"
+            f"{self.system_prompt}\n\n{hints}\n\n公開法規片段:\n{context}\n\n"
             f"使用者問題:\n{state['question']}{retry_note}\n\n請用繁體中文回答。"
         )
         state["answer"] = self.client.generate(prompt)
         return state
+
+    def _build_generation_retry_note(self, state: dict[str, Any]) -> str:
+        if looks_like_policy_refusal(state.get("answer", "")):
+            return (
+                "\n\n上一輪誤判為拒答。此為一般法規問題（比較、程序、定義或個資蒐集要件），"
+                "請依檢索片段回答，且每個事實句附上（doc_id 第 N 條）。"
+            )
+        return (
+            "\n\n上一輪回答未通過引用檢查。"
+            "請務必在每個法規事實句附上（doc_id 第 N 條），且 doc_id 與條號必須來自上方可用引用清單或片段。"
+        )
 
     def _citation_check_node(self, state: dict[str, Any]) -> dict[str, Any]:
         state["citation_hit"] = citation_hit(state["answer"], state["retrieved"])
         return state
 
     def _produce_answer_node(self, state: dict[str, Any]) -> dict[str, Any]:
-        state = self._generate_node(state)
-        state = self._citation_check_node(state)
-        if not state["citation_hit"]:
-            state["retry_generation"] = True
+        for attempt in range(MAX_GENERATION_ATTEMPTS):
+            state["generation_retry_note"] = self._build_generation_retry_note(state) if attempt else ""
             state = self._generate_node(state)
+            if (
+                not state.get("refuse_now")
+                and looks_like_policy_refusal(state["answer"])
+                and attempt < MAX_GENERATION_ATTEMPTS - 1
+            ):
+                continue
             state = self._citation_check_node(state)
+            if state["citation_hit"]:
+                break
         return state
 
     def _refuse_node(self, state: dict[str, Any]) -> dict[str, Any]:
@@ -296,3 +311,19 @@ def _format_weak_retrieval_summary(retrieved: list[RetrievedChunk], limit: int =
     for item in retrieved[:limit]:
         lines.append(f"- {item.chunk.doc_id} {item.chunk.article} {item.chunk.title} (score={item.score:.4f})")
     return "\n".join(lines)
+
+
+def _format_citation_hints(retrieved: list[RetrievedChunk], limit: int = 10) -> str:
+    lines: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    for item in retrieved:
+        key = (item.chunk.doc_id, item.chunk.article)
+        if key in seen:
+            continue
+        seen.add(key)
+        lines.append(f"- {item.chunk.doc_id} {item.chunk.article}")
+        if len(lines) >= limit:
+            break
+    if not lines:
+        return "可用引用（doc_id 第 N 條）:\n- （無）"
+    return "可用引用（doc_id 第 N 條）:\n" + "\n".join(lines)

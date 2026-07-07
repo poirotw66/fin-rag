@@ -10,7 +10,9 @@ Phase 1 baseline: `eval/baseline-phase1.json`（corpus 節錄版，11 chunks）
 
 Phase 2 baseline: `eval/baseline-phase2b.json`（9 份法規、20 題 golden、hybrid 檢索，三項指標 100%）
 
-本 repo 已達可運作的 MVP 階段，**Phase 2 已收尾**。
+Phase 3 baseline: `eval/baseline-phase3.json`（20 題 golden、檢索信心迴圈 + LLM query rewrite，三項指標 100%）
+
+本 repo 已達可運作的 MVP 階段，**Phase 3a 已收尾**（檢索低分拒答 + rewrite 重試迴圈）。
 
 - 公開法規 corpus 入庫與條文 chunk 已完成（目前 346 chunks、9 份法規，見 `python scripts/spot_check_corpus.py`）
 - Gemini embedding 與生成已接入執行流程
@@ -19,7 +21,7 @@ Phase 2 baseline: `eval/baseline-phase2b.json`（9 份法規、20 題 golden、h
 - 已安裝 LangGraph 時走圖流程；否則使用等價的循序 fallback
 - Golden set 20 題評估與自動化測試可通過
 
-最近一次驗證基準（`eval/baseline-phase2b.json`）：
+最近一次驗證基準（`eval/baseline-phase3.json`）：
 
 - `citation_hit_rate`: 1.0
 - `refusal_accuracy`: 1.0
@@ -40,7 +42,9 @@ GitHub Actions 於 push/PR 執行 `python run_tests.py`（不含需 API key 的 
 - **Phase 2（完成）**：完整法條 ingest + 跨法規擴充 + golden 20 題 + hybrid 檢索
   - Phase 2a baseline: `eval/baseline-phase2a.json`（12 題、5 份全文）
   - Phase 2b baseline: `eval/baseline-phase2b.json`（20 題、9 份法規、含 E 軌 cross-law）
-- **Phase 3（進行中）**：檢索低分拒答 + rewrite 重試迴圈、對外文章（blog / wiki）
+- **Phase 3a（完成）**：檢索低分拒答 + `rewrite_query_retry` 迴圈、移除 hard-coded hints、並行 eval
+  - Phase 3 baseline: `eval/baseline-phase3.json`（20 題、三項指標 100%）
+- **Phase 3b（待辦）**：對外文章（blog / wiki）
 
 詳細計畫：`docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md`
 

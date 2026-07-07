@@ -10,7 +10,9 @@ Phase 1 baseline: `eval/baseline-phase1.json` (excerpt corpus, 11 chunks)
 
 Phase 2 baseline: `eval/baseline-phase2b.json` (9 statutes, 20 golden questions, hybrid retrieval, all metrics 1.0)
 
-This repository is at a working MVP stage with **Phase 2 complete**.
+Phase 3 baseline: `eval/baseline-phase3.json` (20 golden questions, retrieval confidence loop + LLM query rewrite, all metrics 1.0)
+
+This repository is at a working MVP stage with **Phase 3a complete** (low-score retrieval refusal + rewrite retry loop).
 
 - Public-law corpus ingestion and chunking are in place (346 chunks, 9 statutes; `python scripts/spot_check_corpus.py`)
 - Gemini embeddings and generation are wired into the runtime flow
@@ -19,7 +21,7 @@ This repository is at a working MVP stage with **Phase 2 complete**.
 - LangGraph is used when installed, with a sequential fallback for constrained environments
 - Golden-set evaluation (20 questions) and automated tests pass in CI
 
-Frozen benchmark (`eval/baseline-phase2b.json`):
+Frozen benchmark (`eval/baseline-phase3.json`):
 
 - `citation_hit_rate`: 1.0
 - `refusal_accuracy`: 1.0
@@ -40,7 +42,9 @@ GitHub Actions runs `python run_tests.py` on push and pull requests (skips Gemin
 - **Phase 2 (done)**: Full statute ingest, cross-law expansion, 20 golden questions, hybrid retrieval
   - Phase 2a baseline: `eval/baseline-phase2a.json` (12 questions, 5 full texts)
   - Phase 2b baseline: `eval/baseline-phase2b.json` (20 questions, 9 statutes, track E cross-law)
-- **Phase 3 (in progress)**: Low-score retrieval refusal with rewrite retry loop, external write-ups (blog / wiki)
+- **Phase 3a (done)**: Low-score retrieval refusal, `rewrite_query_retry` loop, LLM query rewrite (no hard-coded hints), parallel eval
+  - Phase 3 baseline: `eval/baseline-phase3.json` (20 questions, all metrics 1.0)
+- **Phase 3b (next)**: External write-ups (blog / wiki)
 
 Details: [Phase 2 corpus expansion plan](docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md) · Traditional Chinese: [readme-tw.md](readme-tw.md#路線圖)
 

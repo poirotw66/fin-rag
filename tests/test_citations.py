@@ -1,6 +1,6 @@
 import unittest
 
-from fin_rag.citations import citation_hit, should_refuse_question
+from fin_rag.citations import citation_hit, looks_like_policy_refusal, should_refuse_question
 from fin_rag.types import Chunk, RetrievedChunk
 
 
@@ -45,6 +45,14 @@ class CitationTests(unittest.TestCase):
         self.assertTrue(should_refuse_question("國泰投信會被罰多少？"))
         self.assertTrue(should_refuse_question("全委帳戶 4.54 億損失由誰賠？"))
         self.assertFalse(should_refuse_question("CDD 要做哪些事？"))
+
+    def test_looks_like_policy_refusal_detects_standard_disclaimer(self) -> None:
+        self.assertTrue(
+            looks_like_policy_refusal(
+                "我不能判斷特定個案的裁罰金額、賠償責任或刑事責任。"
+            )
+        )
+        self.assertFalse(looks_like_policy_refusal("依 sit-fund-mgmt 第 10 條，基金不得投資利害關係公司證券。"))
 
 
 if __name__ == "__main__":

@@ -50,6 +50,16 @@ def should_refuse_question(question: str) -> bool:
     return any(pattern in question for pattern in CASE_SPECIFIC_PATTERNS)
 
 
+POLICY_REFUSAL_MARKERS = (
+    "我不能判斷特定個案的裁罰金額",
+    "賠償責任或刑事責任",
+)
+
+
+def looks_like_policy_refusal(answer: str) -> bool:
+    return any(marker in answer for marker in POLICY_REFUSAL_MARKERS)
+
+
 def extract_citations(answer: str) -> set[tuple[str, str]]:
     citations: set[tuple[str, str]] = set()
     for text in [match.group(1) for match in PAREN_RE.finditer(answer)]:
