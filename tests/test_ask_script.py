@@ -56,6 +56,8 @@ class AskScriptTests(unittest.TestCase):
 
         self.assertIn("Answer", rendered)
         self.assertIn("Refused: no", rendered)
+        self.assertIn("Citation hit: yes", rendered)
+        self.assertIn("Retrieval round: 0", rendered)
         self.assertIn("Citations", rendered)
         self.assertIn("- aml-finst / 第 7 條 / 金融機構防制洗錢辦法", rendered)
         self.assertIn("Retrieved Chunks", rendered)
@@ -105,6 +107,9 @@ class AskScriptTests(unittest.TestCase):
             [{"doc_id": "aml-finst", "article": "第 7 條", "title": "金融機構防制洗錢辦法"}],
         )
         self.assertEqual(payload["retrieved"][0]["score"], 0.9)
+        self.assertIsNone(payload["refusal_reason"])
+        self.assertEqual(payload["retrieval_round"], 0)
+        self.assertEqual(payload["generation_attempts"], 0)
         self.assertIn("金融機構應進行客戶身分確認", rendered)
 
 

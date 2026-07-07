@@ -27,11 +27,22 @@ def parse_args(argv: list[str]) -> tuple[bool, str]:
 
 
 def format_result(result) -> str:
+    meta_parts = [
+        f"Refused: {'yes' if result.refused else 'no'}",
+        f"Citation hit: {'yes' if result.citation_hit else 'no'}",
+    ]
+    if result.retrieval_confidence is not None:
+        meta_parts.append(f"Retrieval confidence: {result.retrieval_confidence:.4f}")
+    meta_parts.append(f"Retrieval round: {result.retrieval_round}")
+    meta_parts.append(f"Generation attempts: {result.generation_attempts}")
+    if result.refusal_reason:
+        meta_parts.append(f"Refusal reason: {result.refusal_reason}")
+
     sections = [
         "Answer",
         result.answer,
         "",
-        f"Refused: {'yes' if result.refused else 'no'}",
+        " · ".join(meta_parts),
         "",
         "Citations",
         _format_citations(result.retrieved),
@@ -83,6 +94,10 @@ def result_to_json_payload(question: str, result) -> dict:
             }
             for item in result.retrieved
         ],
+        "refusal_reason": result.refusal_reason,
+        "retrieval_confidence": result.retrieval_confidence,
+        "retrieval_round": result.retrieval_round,
+        "generation_attempts": result.generation_attempts,
     }
 
 

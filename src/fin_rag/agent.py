@@ -40,6 +40,10 @@ class AgentResult:
     refused: bool
     citation_hit: bool
     retrieved: list[RetrievedChunk]
+    refusal_reason: str | None = None
+    retrieval_confidence: float | None = None
+    retrieval_round: int = 0
+    generation_attempts: int = 0
 
 
 class FinRagAgent:
@@ -70,6 +74,10 @@ class FinRagAgent:
             refused=state["refused"],
             citation_hit=state["citation_hit"],
             retrieved=state["retrieved"],
+            refusal_reason=state.get("refusal_reason") if state["refused"] else None,
+            retrieval_confidence=state.get("retrieval_confidence"),
+            retrieval_round=state.get("retrieval_round", 0),
+            generation_attempts=state.get("generation_attempt", 0),
         )
 
     def _build_graph(self):
@@ -84,7 +92,8 @@ class FinRagAgent:
         graph.add_node("retrieve", self._retrieve_node)
         graph.add_node("assess_retrieval", self._assess_retrieval_node)
         graph.add_node("rewrite_query_retry", self._rewrite_query_retry_node)
-        graph.add_node("produce_answer", self._produce_answer_node)
+        graph.add_node("generate", self._generate_node)
+        graph.add_node("citation_check", self._citation_check_node)
         graph.add_node("refuse", self._refuse_node)
         graph.set_entry_point("classify")
         graph.add_conditional_edges(
@@ -97,13 +106,18 @@ class FinRagAgent:
         graph.add_conditional_edges(
             "assess_retrieval",
             self._route_after_assess,
-            {"produce_answer": "produce_answer", "rewrite_query_retry": "rewrite_query_retry", "refuse": "refuse"},
+            {"generate": "generate", "rewrite_query_retry": "rewrite_query_retry", "refuse": "refuse"},
         )
         graph.add_edge("rewrite_query_retry", "retrieve")
         graph.add_conditional_edges(
-            "produce_answer",
-            self._route_after_produce,
-            {"done": END, "refuse": "refuse"},
+            "generate",
+            self._route_after_generate,
+            {"generate": "generate", "citation_check": "citation_check"},
+        )
+        graph.add_conditional_edges(
+            "citation_check",
+            self._route_after_citation,
+            {"done": END, "generate": "generate", "refuse": "refuse"},
         )
         graph.add_edge("refuse", END)
         return graph.compile()
@@ -113,14 +127,29 @@ class FinRagAgent:
 
     def _route_after_assess(self, state: dict[str, Any]) -> str:
         if state["retrieval_sufficient"]:
-            return "produce_answer"
+            return "generate"
         if state.get("retrieval_round", 0) < self.max_retrieval_rounds:
             return "rewrite_query_retry"
         return "refuse"
 
-    def _route_after_produce(self, state: dict[str, Any]) -> str:
+    def _route_after_generate(self, state: dict[str, Any]) -> str:
+        attempt = state.get("generation_attempt", 0)
+        if (
+            not state.get("refuse_now")
+            and looks_like_policy_refusal(state["answer"])
+            and attempt < MAX_GENERATION_ATTEMPTS
+        ):
+            state["generation_retry_note"] = self._build_generation_retry_note(state)
+            return "generate"
+        return "citation_check"
+
+    def _route_after_citation(self, state: dict[str, Any]) -> str:
         if state["citation_hit"]:
             return "done"
+        attempt = state.get("generation_attempt", 0)
+        if attempt < MAX_GENERATION_ATTEMPTS:
+            state["generation_retry_note"] = self._build_generation_retry_note(state)
+            return "generate"
         state["refusal_reason"] = "citation"
         return "refuse"
 
@@ -134,6 +163,8 @@ class FinRagAgent:
         state.setdefault("citation_hit", False)
         state.setdefault("refused", False)
         state.setdefault("answer", "")
+        state.setdefault("generation_attempt", 0)
+        state.setdefault("generation_retry_note", "")
         return state
 
     def _rewrite_query_node(self, state: dict[str, Any]) -> dict[str, Any]:
@@ -214,6 +245,7 @@ class FinRagAgent:
             f"使用者問題:\n{state['question']}{retry_note}\n\n請用繁體中文回答。"
         )
         state["answer"] = self.client.generate(prompt)
+        state["generation_attempt"] = state.get("generation_attempt", 0) + 1
         return state
 
     def _build_generation_retry_note(self, state: dict[str, Any]) -> str:
@@ -229,21 +261,6 @@ class FinRagAgent:
 
     def _citation_check_node(self, state: dict[str, Any]) -> dict[str, Any]:
         state["citation_hit"] = citation_hit(state["answer"], state["retrieved"])
-        return state
-
-    def _produce_answer_node(self, state: dict[str, Any]) -> dict[str, Any]:
-        for attempt in range(MAX_GENERATION_ATTEMPTS):
-            state["generation_retry_note"] = self._build_generation_retry_note(state) if attempt else ""
-            state = self._generate_node(state)
-            if (
-                not state.get("refuse_now")
-                and looks_like_policy_refusal(state["answer"])
-                and attempt < MAX_GENERATION_ATTEMPTS - 1
-            ):
-                continue
-            state = self._citation_check_node(state)
-            if state["citation_hit"]:
-                break
         return state
 
     def _refuse_node(self, state: dict[str, Any]) -> dict[str, Any]:
@@ -273,10 +290,18 @@ class _SequentialGraph:
                 continue
             state["refusal_reason"] = "low_retrieval"
             return self.agent._refuse_node(state)
-        state = self.agent._produce_answer_node(state)
-        if not state["citation_hit"]:
+        while True:
+            state = self.agent._generate_node(state)
+            if self.agent._route_after_generate(state) == "generate":
+                continue
+            state = self.agent._citation_check_node(state)
+            route = self.agent._route_after_citation(state)
+            if route == "done":
+                break
+            if route == "generate":
+                continue
             state["refusal_reason"] = "citation"
-            state = self.agent._refuse_node(state)
+            return self.agent._refuse_node(state)
         return state
 
 

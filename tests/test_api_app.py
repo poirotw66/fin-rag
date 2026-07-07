@@ -73,6 +73,10 @@ class ApiAppTests(unittest.TestCase):
                     refused=False,
                     citation_hit=False,
                     retrieved=[],
+                    refusal_reason=None,
+                    retrieval_confidence=None,
+                    retrieval_round=0,
+                    generation_attempts=0,
                 )
 
         app.dependency_overrides[deps_module.get_agent] = lambda: StubAgent()
@@ -97,6 +101,10 @@ class ApiAppTests(unittest.TestCase):
                 "citation_hit": False,
                 "citations": [],
                 "retrieved": [],
+                "refusal_reason": None,
+                "retrieval_confidence": None,
+                "retrieval_round": 0,
+                "generation_attempts": 0,
             },
         )
 

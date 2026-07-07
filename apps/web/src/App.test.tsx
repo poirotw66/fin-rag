@@ -18,6 +18,10 @@ test("submits a question and renders answer details", async () => {
     answer: "風險基礎方法係指依客戶及交易風險採取差異化措施。（aml-finst 第 2 條）",
     refused: false,
     citation_hit: true,
+    refusal_reason: null,
+    retrieval_confidence: 0.042,
+    retrieval_round: 0,
+    generation_attempts: 1,
     citations: [
       { doc_id: "aml-finst", article: "第 2 條", title: "金融機構防制洗錢辦法" },
     ],

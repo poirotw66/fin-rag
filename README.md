@@ -12,12 +12,12 @@ Phase 2 baseline: `eval/baseline-phase2b.json` (9 statutes, 20 golden questions,
 
 Phase 3 baseline: `eval/baseline-phase3.json` (20 golden questions, retrieval confidence loop + LLM query rewrite, all metrics 1.0)
 
-This repository is at a working MVP stage with **Phase 3a complete** (low-score retrieval refusal + rewrite retry loop).
+This repository is at a working MVP stage with **Phase 3c complete** (split LangGraph nodes + observability fields in API/CLI/Web).
 
 - Public-law corpus ingestion and chunking are in place (346 chunks, 9 statutes; `python scripts/spot_check_corpus.py`)
 - Gemini embeddings and generation are wired into the runtime flow
 - Retrieval defaults to **hybrid** (BM25 + embedding, RRF fusion); vector search defaults to **FAISS** (`corpus/index.faiss` + `index_meta.jsonl`, preferred when `FIN_RAG_VECTOR_BACKEND=auto`); BM25 lexicon is persisted as `corpus/index_bm25.json` at build time
-- Answer flow: `classify → rewrite_query → retrieve → assess_retrieval → produce_answer` (low confidence triggers `rewrite_query_retry`)
+- Answer flow: `classify → rewrite_query → retrieve → assess_retrieval → generate → citation_check` (low confidence triggers `rewrite_query_retry`; citation failures retry `generate` up to 3 times)
 - LangGraph is used when installed, with a sequential fallback for constrained environments
 - Golden-set evaluation (20 questions) and automated tests pass in CI
 
@@ -44,6 +44,7 @@ GitHub Actions runs `python run_tests.py` on push and pull requests (skips Gemin
   - Phase 2b baseline: `eval/baseline-phase2b.json` (20 questions, 9 statutes, track E cross-law)
 - **Phase 3a (done)**: Low-score retrieval refusal, `rewrite_query_retry` loop, LLM query rewrite (no hard-coded hints), parallel eval
   - Phase 3 baseline: `eval/baseline-phase3.json` (20 questions, all metrics 1.0)
+- **Phase 3c (done)**: Split `generate` / `citation_check` LangGraph nodes; expose `refusal_reason`, `retrieval_confidence`, `retrieval_round`, `generation_attempts` in API, CLI `--json`, and Web demo
 - **Phase 3b (next)**: External write-ups (blog / wiki)
 
 Details: [Phase 2 corpus expansion plan](docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md) · Traditional Chinese: [readme-tw.md](readme-tw.md#路線圖)
@@ -74,7 +75,7 @@ Fin RAG is split into three layers: an **offline corpus pipeline**, a **core age
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  src/fin_rag                                                    │
-│  FinRagAgent  →  classify → rewrite_query → retrieve → produce_answer │
+│  FinRagAgent  →  classify → rewrite_query → retrieve → assess → generate → citation_check │
 │  GeminiClient (embed + generate)   Retriever (hybrid top-k)           │
 └────────────────────────────┬────────────────────────────────────┘
                              │ reads
@@ -114,7 +115,7 @@ All user-facing paths call the same `FinRagAgent`:
 | Entry | Path | Output |
 |-------|------|--------|
 | CLI | `scripts/ask.py` | Plain text or `--json` |
-| API | `POST /api/ask` via `apps/api` | JSON (`answer`, `citations`, `retrieved`, flags) |
+| API | `POST /api/ask` via `apps/api` | JSON (`answer`, `citations`, `retrieved`, flags, observability fields) |
 | Web demo | `apps/web` → Vite proxy → API | Single-page UI |
 
 **API wiring:** `apps/api/runtime.py` loads `.env`, builds `GeminiClient` + `Retriever`, and returns `FinRagAgent`. Missing API key or index → HTTP 503.
@@ -132,18 +133,19 @@ flowchart TD
     C -->|otherwise| RQ[rewrite_query]
     RQ --> RET[retrieve]
     RET --> AR[assess_retrieval]
-    AR -->|confidence OK| PA[produce_answer]
+    AR -->|confidence OK| G[generate]
     AR -->|low & retries left| RQR[rewrite_query_retry]
     RQR --> RET
     AR -->|low & no retries| RL[refuse low_retrieval]
-    PA --> G[generate with system prompt + context]
-    G --> CH[citation_check]
-    CH -->|citations grounded in retrieved chunks| OUT[final answer]
-    CH -->|missing or ungrounded citations| RETRY[retry generate once]
-    RETRY --> CH2[citation_check]
-    CH2 -->|grounded| OUT
-    CH2 -->|still ungrounded| R
+    G --> RG{policy refusal?}
+    RG -->|yes & attempts left| G
+    RG -->|no or max attempts| CH[citation_check]
+    CH -->|citations grounded| OUT[final answer]
+    CH -->|missing & attempts left| G
+    CH -->|missing & max attempts| RC[refuse citation]
     R --> REF[refusal + disclaimer]
+    RL --> REF
+    RC --> REF
 ```
 
 | Step | Module | Behavior |
@@ -153,10 +155,11 @@ flowchart TD
 | **assess_retrieval** | `retrieval_assess` | Max fused RRF score vs `FIN_RAG_MIN_RETRIEVAL_SCORE` |
 | **rewrite_query_retry** | `agent.FinRagAgent` | Second-pass LLM rewrite when confidence is low (uses prior queries + weak hits) |
 | **retrieve** | `retrieve.Retriever` | Hybrid (BM25 + FAISS/embedding, RRF) or vector-only; top-k from fused ranking |
-| **produce_answer** | `agent.FinRagAgent` | Generate → citation check → one retry on failure, then refuse |
 | **generate** | `gemini.GeminiClient` | System prompt (`prompts/system.md`) + retrieved excerpts → Traditional Chinese answer |
 | **citation_check** | `citations.citation_hit` | Parse `doc_id 第 N 條` (including `第 14-2 條`); must match retrieved chunks |
 | **refuse** | `agent.FinRagAgent` | Policy / low-retrieval / citation refusal messages |
+
+**Observability fields** (API, CLI `--json`, Web demo): `refusal_reason`, `retrieval_confidence`, `retrieval_round`, `generation_attempts`.
 
 ### Evaluation loop
 

@@ -85,6 +85,28 @@ class QueryRewriteTests(unittest.TestCase):
         self.assertEqual(state["answer"], REFUSAL_LOW_RETRIEVAL)
         self.assertTrue(state["refused"])
 
+    def test_route_after_citation_retries_generation_before_refusal(self) -> None:
+        agent = FinRagAgent(client=type("C", (), {"generate": lambda *_: ""})(), retrieve=lambda _: [])
+        state = {
+            "citation_hit": False,
+            "generation_attempt": 1,
+            "answer": "missing citation",
+        }
+
+        self.assertEqual(agent._route_after_citation(state), "generate")
+        self.assertIn("上一輪回答未通過引用檢查", state["generation_retry_note"])
+
+    def test_route_after_citation_refuses_after_max_attempts(self) -> None:
+        agent = FinRagAgent(client=type("C", (), {"generate": lambda *_: ""})(), retrieve=lambda _: [])
+        state = {
+            "citation_hit": False,
+            "generation_attempt": 3,
+            "answer": "still missing citation",
+        }
+
+        self.assertEqual(agent._route_after_citation(state), "refuse")
+        self.assertEqual(state["refusal_reason"], "citation")
+
 
 if __name__ == "__main__":
     unittest.main()

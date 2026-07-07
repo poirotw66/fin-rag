@@ -19,4 +19,8 @@ export type AskResponse = {
   citation_hit: boolean;
   citations: Citation[];
   retrieved: RetrievedChunk[];
+  refusal_reason: string | null;
+  retrieval_confidence: number | null;
+  retrieval_round: number;
+  generation_attempts: number;
 };

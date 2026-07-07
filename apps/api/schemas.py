@@ -28,3 +28,7 @@ class AskResponse(BaseModel):
     citation_hit: bool
     citations: list[CitationResponse]
     retrieved: list[RetrievedChunkResponse]
+    refusal_reason: str | None = None
+    retrieval_confidence: float | None = None
+    retrieval_round: int = 0
+    generation_attempts: int = 0

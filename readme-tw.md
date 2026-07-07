@@ -12,12 +12,12 @@ Phase 2 baseline: `eval/baseline-phase2b.json`（9 份法規、20 題 golden、h
 
 Phase 3 baseline: `eval/baseline-phase3.json`（20 題 golden、檢索信心迴圈 + LLM query rewrite，三項指標 100%）
 
-本 repo 已達可運作的 MVP 階段，**Phase 3a 已收尾**（檢索低分拒答 + rewrite 重試迴圈）。
+本 repo 已達可運作的 MVP 階段，**Phase 3c 已收尾**（LangGraph 節點拆分 + API/CLI/Web observability 欄位）。
 
 - 公開法規 corpus 入庫與條文 chunk 已完成（目前 346 chunks、9 份法規，見 `python scripts/spot_check_corpus.py`）
 - Gemini embedding 與生成已接入執行流程
 - 檢索預設為 **hybrid**（BM25 + embedding，RRF 融合）；向量索引預設 **FAISS**（`corpus/index.faiss` + `index_meta.jsonl`，`auto` 時優先於 JSONL 全量掃描）；BM25 詞表於 build 時寫入 `corpus/index_bm25.json` 並於 runtime 載入
-- 問答流程：`classify → rewrite_query → retrieve → assess_retrieval → produce_answer`（信心不足時觸發 `rewrite_query_retry`）
+- 問答流程：`classify → rewrite_query → retrieve → assess_retrieval → generate → citation_check`（信心不足時觸發 `rewrite_query_retry`；引用失敗時最多重試 `generate` 3 次）
 - 已安裝 LangGraph 時走圖流程；否則使用等價的循序 fallback
 - Golden set 20 題評估與自動化測試可通過
 
@@ -44,6 +44,7 @@ GitHub Actions 於 push/PR 執行 `python run_tests.py`（不含需 API key 的 
   - Phase 2b baseline: `eval/baseline-phase2b.json`（20 題、9 份法規、含 E 軌 cross-law）
 - **Phase 3a（完成）**：檢索低分拒答 + `rewrite_query_retry` 迴圈、移除 hard-coded hints、並行 eval
   - Phase 3 baseline: `eval/baseline-phase3.json`（20 題、三項指標 100%）
+- **Phase 3c（完成）**：拆分 `generate` / `citation_check` LangGraph 節點；於 API、CLI `--json`、Web demo 暴露 `refusal_reason`、`retrieval_confidence`、`retrieval_round`、`generation_attempts`
 - **Phase 3b（待辦）**：對外文章（blog / wiki）
 
 詳細計畫：`docs/superpowers/plans/2026-07-03-phase-2-corpus-expansion.md`
@@ -74,7 +75,7 @@ Fin RAG 分三層：**離線 corpus 管線**、**核心 agent 執行期**（`src
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  src/fin_rag                                                    │
-│  FinRagAgent  →  classify → rewrite_query → retrieve → produce_answer │
+│  FinRagAgent  →  classify → rewrite_query → retrieve → assess → generate → citation_check │
 │  GeminiClient（嵌入 + 生成）   Retriever（hybrid top-k）                  │
 └────────────────────────────┬────────────────────────────────────┘
                              │ 讀取
@@ -114,7 +115,7 @@ manifest.json + raw/*.html
 | 入口 | 路徑 | 輸出 |
 |------|------|------|
 | CLI | `scripts/ask.py` | 純文字或 `--json` |
-| API | `POST /api/ask`（`apps/api`） | JSON（`answer`、`citations`、`retrieved`、旗標） |
+| API | `POST /api/ask`（`apps/api`） | JSON（`answer`、`citations`、`retrieved`、旗標、observability 欄位） |
 | Web demo | `apps/web` → Vite proxy → API | 單頁問答介面 |
 
 **API 組裝：** `apps/api/runtime.py` 讀取 `.env`，建立 `GeminiClient` + `Retriever`，回傳 `FinRagAgent`。缺少 API key 或索引檔 → HTTP 503。
@@ -132,18 +133,19 @@ flowchart TD
     C -->|一般法規問題| RQ[rewrite_query]
     RQ --> RET[retrieve 檢索]
     RET --> AR[assess_retrieval 評估信心]
-    AR -->|信心足夠| PA[produce_answer]
+    AR -->|信心足夠| G[generate 生成回答]
     AR -->|偏低且可重試| RQR[rewrite_query_retry]
     RQR --> RET
     AR -->|偏低且無重試| RL[refuse 檢索不足]
-    PA --> G[generate 生成回答]
-    G --> CH[citation_check 引用檢查]
+    G --> RG{誤判拒答?}
+    RG -->|是且可重試| G
+    RG -->|否或達上限| CH[citation_check 引用檢查]
     CH -->|引用落在檢索結果| OUT[輸出回答]
-    CH -->|缺少或未對齊引用| RETRY[重試生成一次]
-    RETRY --> CH2[再次引用檢查]
-    CH2 -->|對齊| OUT
-    CH2 -->|仍失敗| R
+    CH -->|缺少且可重試| G
+    CH -->|缺少且達上限| RC[refuse 引用失敗]
     R --> REF[拒答文案 + 免責]
+    RL --> REF
+    RC --> REF
 ```
 
 | 步驟 | 模組 | 行為 |
@@ -153,10 +155,11 @@ flowchart TD
 | **assess_retrieval** | `retrieval_assess` | 最大融合 RRF 分數對照 `FIN_RAG_MIN_RETRIEVAL_SCORE` |
 | **rewrite_query_retry** | `agent.FinRagAgent` | 信心不足時第二輪改寫（帶入已試查詢與弱命中摘要） |
 | **retrieve** | `retrieve.Retriever` | hybrid（BM25 + FAISS/embedding，RRF）或純向量；依融合排序取 top-k |
-| **produce_answer** | `agent.FinRagAgent` | 生成 → 引用檢查 → 失敗重試一次，仍失敗則拒答 |
 | **generate** | `gemini.GeminiClient` | 系統提示（`prompts/system.md`）+ 檢索片段 → 繁體中文回答 |
 | **citation_check** | `citations.citation_hit` | 解析 `doc_id 第 N 條`（含 `第 14-2 條` 等）；須對齊檢索結果 |
 | **refuse** | `agent.FinRagAgent` | 依原因拒答：policy／檢索不足／引用失敗 |
+
+**Observability 欄位**（API、CLI `--json`、Web demo）：`refusal_reason`、`retrieval_confidence`、`retrieval_round`、`generation_attempts`。
 
 ### 評估迴圈
 

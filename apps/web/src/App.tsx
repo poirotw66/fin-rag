@@ -61,6 +61,12 @@ export default function App() {
             <p className="meta">
               Refused: {result.refused ? "yes" : "no"} · Citation hit:{" "}
               {result.citation_hit ? "yes" : "no"}
+              {result.retrieval_confidence !== null ? (
+                <> · Confidence: {result.retrieval_confidence.toFixed(4)}</>
+              ) : null}
+              {" · "}Round: {result.retrieval_round}
+              {" · "}Attempts: {result.generation_attempts}
+              {result.refusal_reason ? <> · Reason: {result.refusal_reason}</> : null}
             </p>
           </section>
 

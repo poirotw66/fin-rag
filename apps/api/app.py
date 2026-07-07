@@ -70,6 +70,10 @@ def create_app() -> FastAPI:
             citation_hit=result.citation_hit,
             citations=_build_citations(result),
             retrieved=_build_retrieved(result),
+            refusal_reason=result.refusal_reason,
+            retrieval_confidence=result.retrieval_confidence,
+            retrieval_round=result.retrieval_round,
+            generation_attempts=result.generation_attempts,
         )
 
     return app
