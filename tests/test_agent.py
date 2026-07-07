@@ -140,6 +140,40 @@ class QueryRewriteTests(unittest.TestCase):
         self.assertEqual(state["policy_misrefusal_count"], 1)
         self.assertIn("不可拒答", state["generation_retry_note"])
 
+    def test_generate_prompt_adds_focus_note_for_insider_stock_question(self) -> None:
+        captured: dict[str, str] = {}
+
+        class FakeClient:
+            def generate(self, prompt: str) -> str:
+                captured["prompt"] = prompt
+                return "answer"
+
+        agent = FinRagAgent(client=FakeClient(), retrieve=lambda _: [])
+        state = {
+            "question": "公司內部人買賣自家股票，法規上要注意什麼？",
+            "retrieved": [_retrieved_chunk("sit-securities-act", "第 43-1 條")],
+        }
+
+        agent._generate_node(state)
+
+        self.assertIn("先列現有片段能支持之申報或公告義務", captured["prompt"])
+        self.assertIn("禁止期間、短期交易、內線交易", captured["prompt"])
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _retrieved_chunk(doc_id: str, article: str) -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk=Chunk(
+            doc_id=doc_id,
+            title=f"{doc_id} title",
+            article=article,
+            text="text",
+            track="A",
+            source_url="https://example.com",
+            revision_date="2026-01-01",
+        ),
+        score=0.9,
+    )

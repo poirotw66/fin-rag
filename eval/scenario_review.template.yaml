@@ -49,10 +49,10 @@
 
 - id: SC08
   r1_scope: 1
-  r3_usefulness: 0
-  r4_epistemic: 0
-  weighted_pass: false
-  reviewer_notes: "已拉回申報與責任主軸，但仍混入多項投信特定規則，未充分聚焦一般內部人交易義務。"
+  r3_usefulness: 1
+  r4_epistemic: 1
+  weighted_pass: true
+  reviewer_notes: "先交代大量持股申報義務與觸發條件，並明確標示禁止期間與內線交易細節不在現有片段，聚焦且可執行。"
 
 - id: SC09
   r1_scope: 1

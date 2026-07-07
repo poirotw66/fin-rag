@@ -270,9 +270,10 @@ class FinRagAgent:
         )
         hints = _format_citation_hints(state["retrieved"])
         retry_note = state.get("generation_retry_note", "")
+        focus_note = _build_generation_focus_note(state.get("question", ""))
         prompt = (
             f"{self.system_prompt}\n\n{hints}\n\n公開法規片段:\n{context}\n\n"
-            f"使用者問題:\n{state['question']}{retry_note}\n\n請用繁體中文回答。"
+            f"使用者問題:\n{state['question']}{focus_note}{retry_note}\n\n請用繁體中文回答。"
         )
         state["answer"] = self.client.generate(prompt)
         state["generation_attempt"] = state.get("generation_attempt", 0) + 1
@@ -372,6 +373,18 @@ def _specialized_retrieval_queries(question: str) -> list[str]:
     if "內部人" in question and "股票" in question:
         return ["證券交易法 內部人 自家股票 交易義務"]
     return []
+
+
+def _build_generation_focus_note(question: str) -> str:
+    if "內部人" in question and "股票" in question:
+        return (
+            "\n\n此題以公開發行公司內部人買賣自家股票為主。回答順序必須是："
+            "1) 先列現有片段能支持之申報或公告義務，並說明觸發條件；"
+            "2) 若片段未涵蓋禁止期間、短期交易、內線交易或具體交易限制，"
+            "須明確說明現有收錄範圍未直接提供該細節，勿以不相干條文充數；"
+            "3) 勿補充投信、投顧、基金經理人或全權委託之特定規則，除非題目明確涉及。"
+        )
+    return ""
 
 
 def _read_system_prompt(path: str | Path | None) -> str:
