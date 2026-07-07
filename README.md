@@ -16,7 +16,9 @@ Phase 4 baseline: `eval/baseline-phase4.json` (15 statutes, 26 golden questions,
 
 Phase 5 baseline: `eval/baseline-phase5.json` (16 statutes, 34 golden questions, all metrics 1.0)
 
-This repository is at a working MVP stage with **Phase 5 complete** (deepened subsets + insurance act excerpt).
+Phase 6 baseline: `eval/baseline-phase6-scenarios.json` (20 workplace scenarios, all auto metrics 1.0, Gate C rubric 20/20)
+
+This repository is at a working MVP stage with **Phase 6 complete** (golden regression plus scenario-based acceptance eval).
 
 - Public-law corpus ingestion and chunking are in place (**475 chunks, 16 statutes**; `python scripts/spot_check_corpus.py`)
 - **Coverage**: AML, securities investment trust/advisory, related-party governance, deepened privacy/securities/bank/trust/FHC/futures excerpts, insurance AML IC, insurance act excerpt. **Most large statutes are curated subsets; not a complete financial law database; not legal advice.**
@@ -25,18 +27,26 @@ This repository is at a working MVP stage with **Phase 5 complete** (deepened su
 - Answer flow: `classify → rewrite_query → retrieve → assess_retrieval → generate → citation_check` (low confidence triggers `rewrite_query_retry`; citation failures retry `generate` up to 3 times)
 - LangGraph is used when installed, with a sequential fallback for constrained environments
 - Golden-set evaluation (**34 questions**) and automated tests pass in CI
+- Scenario acceptance evaluation (**20 questions**) frozen in `eval/baseline-phase6-scenarios.json`
 
-Frozen benchmark (`eval/baseline-phase5.json`):
+Frozen golden benchmark (`eval/baseline-phase5.json`):
 
 - `citation_hit_rate`: 1.0
 - `refusal_accuracy`: 1.0
 - `expected_refs_retrieved_rate`: 1.0
+
+Frozen scenario benchmark (`eval/baseline-phase6-scenarios.json`):
+
+- `citation_hit_rate`: 1.0
+- `refusal_accuracy`: 1.0
+- `critical_failures`: 0
 
 Reproduce locally:
 
 ```bash
 python run_tests.py
 FIN_RAG_RETRIEVAL_MODE=hybrid python eval/run.py
+FIN_RAG_RETRIEVAL_MODE=hybrid python eval/run_scenarios.py
 ```
 
 GitHub Actions runs `python run_tests.py` on push and pull requests (skips Gemini integration tests without an API key).
