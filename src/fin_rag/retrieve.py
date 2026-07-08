@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+
 from .bm25 import BM25Index, read_bm25_index
 from .gemini import GeminiClient
 from .types import Chunk, RetrievedChunk
@@ -34,36 +36,54 @@ class Retriever:
         self._bm25_index: BM25Index | None = None
 
     def retrieve(self, question: str) -> list[RetrievedChunk]:
+        query_embedding = self.client.embed_many([question])[0]
+        return self._search(question, query_embedding)
+
+    def retrieve_queries(self, queries: list[str]) -> list[RetrievedChunk]:
+        unique_queries = list(dict.fromkeys(queries))
+        if not unique_queries:
+            return []
+        embeddings = self.client.embed_many(unique_queries)
+        if len(unique_queries) == 1:
+            per_query_results = [self._search(unique_queries[0], embeddings[0])]
+        else:
+            workers = min(len(unique_queries), 4)
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                per_query_results = list(
+                    executor.map(
+                        lambda args: self._search(*args),
+                        zip(unique_queries, embeddings),
+                    )
+                )
+        fused_scores: dict[tuple[str, str], float] = {}
+        chunks: dict[tuple[str, str], Chunk] = {}
+        for query, results in zip(unique_queries, per_query_results):
+            for rank, item in enumerate(results):
+                key = (item.chunk.doc_id, item.chunk.article)
+                fused_scores[key] = fused_scores.get(key, 0.0) + 1.0 / (self.rrf_k + rank + 1)
+                chunks[key] = item.chunk
+        _apply_query_routing_bonus(unique_queries, fused_scores, chunks)
+        ordered = sorted(fused_scores, key=lambda key: fused_scores[key], reverse=True)
+        budget = min(self.top_k * len(unique_queries), 24)
+        return [
+            RetrievedChunk(chunk=chunks[key], score=fused_scores[key])
+            for key in ordered[:budget]
+        ]
+
+    def _search(self, query: str, query_embedding: list[float]) -> list[RetrievedChunk]:
         bundle = self._load_bundle()
-        query_embedding = self.client.embed(question)
         if self.retrieval_mode == "embedding":
             ranked = rank_loaded_index(bundle, query_embedding)
         else:
             ranked = hybrid_search_loaded_index(
                 bundle,
                 query_embedding,
-                question,
+                query,
                 len(bundle.chunks),
                 bm25_index=self._load_bm25_index(bundle.chunks),
                 rrf_k=self.rrf_k,
             )
         return ranked[:self.top_k]
-
-    def retrieve_queries(self, queries: list[str]) -> list[RetrievedChunk]:
-        fused_scores: dict[tuple[str, str], float] = {}
-        chunks: dict[tuple[str, str], Chunk] = {}
-        for query in queries:
-            for rank, item in enumerate(self.retrieve(query)):
-                key = (item.chunk.doc_id, item.chunk.article)
-                fused_scores[key] = fused_scores.get(key, 0.0) + 1.0 / (self.rrf_k + rank + 1)
-                chunks[key] = item.chunk
-        _apply_query_routing_bonus(queries, fused_scores, chunks)
-        ordered = sorted(fused_scores, key=lambda key: fused_scores[key], reverse=True)
-        budget = min(self.top_k * len(queries), 24)
-        return [
-            RetrievedChunk(chunk=chunks[key], score=fused_scores[key])
-            for key in ordered[:budget]
-        ]
 
     def _load_bundle(self) -> LoadedIndex:
         if self._bundle is None:
@@ -97,4 +117,3 @@ def _apply_query_routing_bonus(
                 fused_scores[key] += 0.03
             elif chunk.article in {"第 174 條", "第 174-1 條"}:
                 fused_scores[key] += 0.02
-

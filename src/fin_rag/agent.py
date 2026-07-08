@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -43,6 +44,7 @@ REFUSAL_MESSAGES = {
 
 MAX_POLICY_MISREFUSAL_RETRIES = 4
 MAX_CITATION_RETRIES = 3
+GENERATION_CHUNK_LIMIT = 10
 
 COMPARISON_QUESTION_MARKERS = ("有何不同", "差異", "比較", "區別", "對照")
 PROCEDURE_QUESTION_MARKERS = ("CDD", "客戶身分確認", "身分確認", "申報", "保存")
@@ -79,6 +81,7 @@ class FinRagAgent:
         self.system_prompt = _read_system_prompt(system_prompt_path)
         self.retrieval_rewrite_prompt = _read_retrieval_rewrite_prompt()
         self.retrieval_rewrite_retry_prompt = _read_retrieval_rewrite_retry_prompt()
+        self.corpus_catalog = _read_corpus_catalog()
         self.graph = self._build_graph()
 
     def answer(self, question: str) -> AgentResult:
@@ -209,7 +212,12 @@ class FinRagAgent:
     def _rewrite_query_node(self, state: dict[str, Any]) -> dict[str, Any]:
         state["retrieval_round"] = 0
         state["prior_queries"] = []
-        state["retrieval_queries"] = self._rewrite_for_retrieval(state["question"])
+        question = state["question"]
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            rewrite_future = executor.submit(self._rewrite_for_retrieval, question)
+            prefetch_future = executor.submit(self.retrieve_queries, [question])
+            state["retrieval_queries"] = rewrite_future.result()
+            state["_prefetched_retrieved"] = prefetch_future.result()
         state["prior_queries"] = list(state["retrieval_queries"])
         return state
 
@@ -222,22 +230,20 @@ class FinRagAgent:
         return state
 
     def _rewrite_for_retrieval(self, question: str) -> list[str]:
-        catalog = _read_corpus_catalog()
         prompt = (
             f"{self.retrieval_rewrite_prompt}\n\n"
-            f"{catalog}\n\n"
+            f"{self.corpus_catalog}\n\n"
             f"使用者問題:\n{question}\n\n"
             "請只輸出 1 至 3 行繁體中文檢索查詢，每行一句，不要其他說明。"
         )
         return self._parse_rewrite_lines(self.client.generate(prompt), question, question)
 
     def _rewrite_for_retrieval_retry(self, state: dict[str, Any]) -> list[str]:
-        catalog = _read_corpus_catalog()
         weak_hits = _format_weak_retrieval_summary(state.get("retrieved", []))
         prior = "\n".join(f"- {query}" for query in state.get("prior_queries", [])) or "- （無）"
         prompt = (
             f"{self.retrieval_rewrite_retry_prompt}\n\n"
-            f"{catalog}\n\n"
+            f"{self.corpus_catalog}\n\n"
             f"使用者問題:\n{state['question']}\n\n"
             f"上一輪已試查詢:\n{prior}\n\n"
             f"上一輪檢索片段摘要:\n{weak_hits}\n\n"
@@ -255,12 +261,29 @@ class FinRagAgent:
         return list(dict.fromkeys([*base_queries, *_specialized_retrieval_queries(question)]))
 
     def _retrieve_node(self, state: dict[str, Any]) -> dict[str, Any]:
-        queries = list(dict.fromkeys([state["question"], *state.get("retrieval_queries", [])]))
-        new_items = self.retrieve_queries(queries)
-        if state.get("retrieval_round", 0) > 0 and state.get("retrieved"):
-            state["retrieved"] = merge_retrieved_chunks(state["retrieved"], new_items)
+        question = state["question"]
+        rewrite_queries = list(state.get("retrieval_queries", []))
+        if state.get("retrieval_round", 0) > 0:
+            queries = list(dict.fromkeys([question, *rewrite_queries]))
+            new_items = self.retrieve_queries(queries)
+            if state.get("retrieved"):
+                state["retrieved"] = merge_retrieved_chunks(state["retrieved"], new_items)
+            else:
+                state["retrieved"] = new_items
+            return state
+
+        extra_queries = [query for query in rewrite_queries if query != question]
+        prefetch = state.pop("_prefetched_retrieved", None)
+        if extra_queries:
+            extra_items = self.retrieve_queries(extra_queries)
+            if prefetch is not None:
+                state["retrieved"] = merge_retrieved_chunks(prefetch, extra_items)
+            else:
+                state["retrieved"] = extra_items
+        elif prefetch is not None:
+            state["retrieved"] = prefetch
         else:
-            state["retrieved"] = new_items
+            state["retrieved"] = self.retrieve_queries([question])
         return state
 
     def _assess_retrieval_node(self, state: dict[str, Any]) -> dict[str, Any]:
@@ -278,16 +301,18 @@ class FinRagAgent:
         return state
 
     def _generate_node(self, state: dict[str, Any]) -> dict[str, Any]:
+        retrieved = _generation_chunks(state["retrieved"])
         context = "\n\n".join(
             f"[{item.chunk.doc_id} {item.chunk.article}] {item.chunk.title}: {item.chunk.text}"
-            for item in state["retrieved"]
+            for item in retrieved
         )
-        hints = _format_citation_hints(state["retrieved"])
+        hints = _format_citation_hints(retrieved)
         retry_note = state.get("generation_retry_note", "")
         focus_note = _build_generation_focus_note(state.get("question", ""))
+        out_of_corpus_note = _build_out_of_corpus_generation_note(state.get("question", ""))
         prompt = (
             f"{self.system_prompt}\n\n{hints}\n\n公開法規片段:\n{context}\n\n"
-            f"使用者問題:\n{state['question']}{focus_note}{retry_note}\n\n請用繁體中文回答。"
+            f"使用者問題:\n{state['question']}{focus_note}{out_of_corpus_note}{retry_note}\n\n請用繁體中文回答。"
         )
         state["answer"] = self.client.generate(prompt)
         state["generation_attempt"] = state.get("generation_attempt", 0) + 1
@@ -391,6 +416,10 @@ def _specialized_retrieval_queries(question: str) -> list[str]:
     return []
 
 
+def _generation_chunks(retrieved: list[RetrievedChunk]) -> list[RetrievedChunk]:
+    return retrieved[:GENERATION_CHUNK_LIMIT]
+
+
 def _build_generation_focus_note(question: str) -> str:
     if "內部人" in question and "股票" in question:
         return (
@@ -399,6 +428,15 @@ def _build_generation_focus_note(question: str) -> str:
             "2) 若片段未涵蓋禁止期間、短期交易、內線交易或具體交易限制，"
             "須明確說明現有收錄範圍未直接提供該細節，勿以不相干條文充數；"
             "3) 勿補充投信、投顧、基金經理人或全權委託之特定規則，除非題目明確涉及。"
+        )
+    return ""
+
+
+def _build_out_of_corpus_generation_note(question: str) -> str:
+    if looks_out_of_corpus_question(question):
+        return (
+            "\n\n若檢索片段未涵蓋此議題相關法規，"
+            "請明確說明現有收錄範圍不足以回答，勿以不相干條文充數或捏造規定。"
         )
     return ""
 

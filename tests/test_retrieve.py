@@ -78,6 +78,9 @@ class MultiQueryRetrieveTests(unittest.TestCase):
                     return [0.0, 1.0, 0.0]
                 return [0.0, 0.0, 1.0]
 
+            def embed_many(self, texts: list[str]) -> list[list[float]]:
+                return [self.embed(text) for text in texts]
+
         retriever = Retriever.__new__(Retriever)
         retriever.client = FakeClient()
         retriever.index_path = "unused"
@@ -87,7 +90,8 @@ class MultiQueryRetrieveTests(unittest.TestCase):
         retriever.rrf_k = 60
         retriever._bundle = None
         retriever._bm25_index = None
-        def fake_retrieve(query: str) -> list[RetrievedChunk]:
+
+        def fake_search(query: str, _embedding: list[float]) -> list[RetrievedChunk]:
             if "客戶" in query:
                 return [
                     RetrievedChunk(chunk=records[0].chunk, score=0.9),
@@ -98,7 +102,7 @@ class MultiQueryRetrieveTests(unittest.TestCase):
                 RetrievedChunk(chunk=records[0].chunk, score=0.1),
             ]
 
-        retriever.retrieve = fake_retrieve
+        retriever._search = fake_search
 
         results = retriever.retrieve_queries(["客戶身分確認", "交易紀錄保存"])
 
@@ -113,10 +117,11 @@ class MultiQueryRetrieveTests(unittest.TestCase):
         trust_chunk = _chunk("sit-trust-act", "第 77 條", "基金經理人 股票 交易限制")
 
         retriever = Retriever.__new__(Retriever)
+        retriever.client = type("FakeClient", (), {"embed_many": lambda _self, texts: [[1.0]] * len(texts)})()
         retriever.top_k = 2
         retriever.rrf_k = 60
 
-        def fake_retrieve(query: str) -> list[RetrievedChunk]:
+        def fake_search(query: str, _embedding: list[float]) -> list[RetrievedChunk]:
             if query == "證券交易法 內部人 自家股票 交易義務":
                 return [
                     RetrievedChunk(chunk=securities_chunk, score=0.9),
@@ -127,7 +132,7 @@ class MultiQueryRetrieveTests(unittest.TestCase):
                 RetrievedChunk(chunk=securities_chunk, score=0.8),
             ]
 
-        retriever.retrieve = fake_retrieve
+        retriever._search = fake_search
 
         results = retriever.retrieve_queries(
             ["公司內部人買賣自家股票，法規上要注意什麼？", "證券交易法 內部人 自家股票 交易義務"]
@@ -144,10 +149,11 @@ class MultiQueryRetrieveTests(unittest.TestCase):
         penalty_chunk = _chunk("sit-securities-act", "第 174 條", "董事 經理人 受僱人 虛偽記載 刑責")
 
         retriever = Retriever.__new__(Retriever)
+        retriever.client = type("FakeClient", (), {"embed_many": lambda _self, texts: [[1.0]] * len(texts)})()
         retriever.top_k = 3
         retriever.rrf_k = 60
 
-        def fake_retrieve(query: str) -> list[RetrievedChunk]:
+        def fake_search(query: str, _embedding: list[float]) -> list[RetrievedChunk]:
             if query == "證券交易法 內部人 自家股票 交易義務":
                 return [
                     RetrievedChunk(chunk=procedure_chunk, score=0.9),
@@ -160,7 +166,7 @@ class MultiQueryRetrieveTests(unittest.TestCase):
                 RetrievedChunk(chunk=penalty_chunk, score=0.7),
             ]
 
-        retriever.retrieve = fake_retrieve
+        retriever._search = fake_search
 
         results = retriever.retrieve_queries(
             ["公司內部人買賣自家股票，法規上要注意什麼？", "證券交易法 內部人 自家股票 交易義務"]

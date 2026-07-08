@@ -6,7 +6,7 @@ from fin_rag.types import Chunk, RetrievedChunk
 
 class QueryRewriteTests(unittest.TestCase):
     def test_rewrite_query_node_passes_model_output_to_retriever(self) -> None:
-        captured: dict[str, list[str]] = {}
+        captured: list[list[str]] = []
 
         class FakeClient:
             def generate(self, prompt: str) -> str:
@@ -16,7 +16,7 @@ class QueryRewriteTests(unittest.TestCase):
                 return [1.0]
 
         def retrieve_queries(queries: list[str]) -> list:
-            captured["queries"] = queries
+            captured.append(queries)
             return []
 
         agent = FinRagAgent(
@@ -24,11 +24,13 @@ class QueryRewriteTests(unittest.TestCase):
             retrieve=lambda _: [],
             retrieve_queries=retrieve_queries,
         )
-        state = agent._classify_node({"question": "基金能否買賣利害關係公司發行之證券？"})
+        question = "基金能否買賣利害關係公司發行之證券？"
+        state = agent._classify_node({"question": question})
         state = agent._rewrite_query_node(state)
         agent._retrieve_node(state)
 
-        self.assertIn("證券投資信託基金管理辦法", captured["queries"][1])
+        self.assertEqual(captured[0], [question])
+        self.assertIn("證券投資信託基金管理辦法", captured[1][0])
 
     def test_rewrite_falls_back_to_original_question_when_model_returns_empty(self) -> None:
         class FakeClient:
@@ -159,10 +161,13 @@ class QueryRewriteTests(unittest.TestCase):
         self.assertIn("先列現有片段能支持之申報或公告義務", captured["prompt"])
         self.assertIn("禁止期間、短期交易、內線交易", captured["prompt"])
 
-    def test_out_of_corpus_question_skips_llm_pipeline(self) -> None:
+    def test_out_of_corpus_question_short_circuits_at_classify(self) -> None:
         class ExplodingClient:
             def generate(self, prompt: str) -> str:
                 raise AssertionError("generate should not be called for out-of-corpus questions")
+
+            def embed_many(self, texts: list[str]) -> list[list[float]]:
+                raise AssertionError("embed should not be called for out-of-corpus questions")
 
             def embed(self, text: str) -> list[float]:
                 raise AssertionError("embed should not be called for out-of-corpus questions")
