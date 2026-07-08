@@ -159,6 +159,24 @@ class QueryRewriteTests(unittest.TestCase):
         self.assertIn("先列現有片段能支持之申報或公告義務", captured["prompt"])
         self.assertIn("禁止期間、短期交易、內線交易", captured["prompt"])
 
+    def test_out_of_corpus_question_skips_llm_pipeline(self) -> None:
+        class ExplodingClient:
+            def generate(self, prompt: str) -> str:
+                raise AssertionError("generate should not be called for out-of-corpus questions")
+
+            def embed(self, text: str) -> list[float]:
+                raise AssertionError("embed should not be called for out-of-corpus questions")
+
+        agent = FinRagAgent(client=ExplodingClient(), retrieve=lambda _: [])
+        result = agent.answer("信用卡循環利率上限是多少？")
+
+        self.assertFalse(result.refused)
+        self.assertTrue(result.citation_hit)
+        self.assertIn("未涵蓋", result.answer)
+        self.assertEqual(result.generation_attempts, 0)
+        self.assertEqual(result.retrieval_round, 0)
+        self.assertEqual(result.retrieved, [])
+
 
 if __name__ == "__main__":
     unittest.main()

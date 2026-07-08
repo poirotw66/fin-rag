@@ -109,11 +109,16 @@ class FinRagAgent:
         graph.add_node("generate", self._generate_node)
         graph.add_node("citation_check", self._citation_check_node)
         graph.add_node("refuse", self._refuse_node)
+        graph.add_node("corpus_boundary", self._corpus_boundary_node)
         graph.set_entry_point("classify")
         graph.add_conditional_edges(
             "classify",
             self._route_after_classify,
-            {"refuse": "refuse", "rewrite_query": "rewrite_query"},
+            {
+                "refuse": "refuse",
+                "corpus_boundary": "corpus_boundary",
+                "rewrite_query": "rewrite_query",
+            },
         )
         graph.add_edge("rewrite_query", "retrieve")
         graph.add_edge("retrieve", "assess_retrieval")
@@ -134,10 +139,15 @@ class FinRagAgent:
             {"done": END, "generate": "generate", "refuse": "refuse"},
         )
         graph.add_edge("refuse", END)
+        graph.add_edge("corpus_boundary", END)
         return graph.compile()
 
     def _route_after_classify(self, state: dict[str, Any]) -> str:
-        return "refuse" if state["refuse_now"] else "rewrite_query"
+        if state["refuse_now"]:
+            return "refuse"
+        if state.get("corpus_boundary_now"):
+            return "corpus_boundary"
+        return "rewrite_query"
 
     def _route_after_assess(self, state: dict[str, Any]) -> str:
         if state["retrieval_sufficient"]:
@@ -177,7 +187,11 @@ class FinRagAgent:
         state["generation_retry_note"] = self._build_generation_retry_note(state)
 
     def _classify_node(self, state: dict[str, Any]) -> dict[str, Any]:
-        state["refuse_now"] = should_refuse_question(state["question"])
+        question = state["question"]
+        state["refuse_now"] = should_refuse_question(question)
+        state["corpus_boundary_now"] = (
+            not state["refuse_now"] and looks_out_of_corpus_question(question)
+        )
         if state["refuse_now"]:
             state["refusal_reason"] = "policy"
         state.setdefault("retrieved", [])
@@ -335,6 +349,8 @@ class _SequentialGraph:
         state = self.agent._classify_node(state)
         if state["refuse_now"]:
             return self.agent._refuse_node(state)
+        if state.get("corpus_boundary_now"):
+            return self.agent._corpus_boundary_node(state)
         state = self.agent._rewrite_query_node(state)
         while True:
             state = self.agent._retrieve_node(state)
